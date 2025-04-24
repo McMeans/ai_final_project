@@ -1,1 +1,20 @@
 __pycache__
+
+# Video files
+videos/*.mp4
+videos/*.mov
+videos/*.avi
+videos/*.mkv
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+*.mp3
+*.flac
+*.aac
+
+# Git LFS pointer files
+.gitattributes
