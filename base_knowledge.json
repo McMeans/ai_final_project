@@ -1,0 +1,573 @@
+{
+    "nodes": {
+        "visual_elements": {
+            "type": "category"
+        },
+        "lighting": {
+            "type": "concept"
+        },
+        "composition": {
+            "type": "concept"
+        },
+        "color_scheme": {
+            "type": "concept"
+        },
+        "camera_angle": {
+            "type": "concept"
+        },
+        "camera_movement": {
+            "type": "concept"
+        },
+        "framing": {
+            "type": "concept"
+        },
+        "focus": {
+            "type": "concept"
+        },
+        "depth_of_field": {
+            "type": "concept"
+        },
+        "audio_elements": {
+            "type": "category"
+        },
+        "dialogue": {
+            "type": "concept"
+        },
+        "background_music": {
+            "type": "concept"
+        },
+        "sound_effects": {
+            "type": "concept"
+        },
+        "ambient_sound": {
+            "type": "concept"
+        },
+        "voice_over": {
+            "type": "concept"
+        },
+        "audio_mixing": {
+            "type": "concept"
+        },
+        "volume_levels": {
+            "type": "concept"
+        },
+        "narrative_elements": {
+            "type": "category"
+        },
+        "plot_point": {
+            "type": "concept"
+        },
+        "character_development": {
+            "type": "concept"
+        },
+        "story_arc": {
+            "type": "concept"
+        },
+        "exposition": {
+            "type": "concept"
+        },
+        "conflict": {
+            "type": "concept"
+        },
+        "resolution": {
+            "type": "concept"
+        },
+        "pacing": {
+            "type": "concept"
+        },
+        "technical_aspects": {
+            "type": "category"
+        },
+        "video_quality": {
+            "type": "concept"
+        },
+        "editing_technique": {
+            "type": "concept"
+        },
+        "transition_type": {
+            "type": "concept"
+        },
+        "special_effects": {
+            "type": "concept"
+        },
+        "color_grading": {
+            "type": "concept"
+        },
+        "post_processing": {
+            "type": "concept"
+        },
+        "emotional_aspects": {
+            "type": "category"
+        },
+        "mood": {
+            "type": "concept"
+        },
+        "tension": {
+            "type": "concept"
+        },
+        "emotional_impact": {
+            "type": "concept"
+        },
+        "atmosphere": {
+            "type": "concept"
+        },
+        "viewer_engagement": {
+            "type": "concept"
+        },
+        "dramatic_effect": {
+            "type": "concept"
+        },
+        "quality": {
+            "type": "descriptor_category"
+        },
+        "excellent": {
+            "type": "descriptor"
+        },
+        "good": {
+            "type": "descriptor"
+        },
+        "average": {
+            "type": "descriptor"
+        },
+        "poor": {
+            "type": "descriptor"
+        },
+        "intensity": {
+            "type": "descriptor_category"
+        },
+        "high": {
+            "type": "descriptor"
+        },
+        "medium": {
+            "type": "descriptor"
+        },
+        "low": {
+            "type": "descriptor"
+        },
+        "complexity": {
+            "type": "descriptor_category"
+        },
+        "simple": {
+            "type": "descriptor"
+        },
+        "moderate": {
+            "type": "descriptor"
+        },
+        "complex": {
+            "type": "descriptor"
+        },
+        "effectiveness": {
+            "type": "descriptor_category"
+        },
+        "effective": {
+            "type": "descriptor"
+        },
+        "neutral": {
+            "type": "descriptor"
+        },
+        "ineffective": {
+            "type": "descriptor"
+        }
+    },
+    "edges": [
+        [
+            "visual_elements",
+            "lighting",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "visual_elements",
+            "composition",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "visual_elements",
+            "color_scheme",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "visual_elements",
+            "camera_angle",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "visual_elements",
+            "camera_movement",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "visual_elements",
+            "framing",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "visual_elements",
+            "focus",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "visual_elements",
+            "depth_of_field",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "lighting",
+            "mood",
+            {
+                "relation": "influences"
+            }
+        ],
+        [
+            "color_scheme",
+            "mood",
+            {
+                "relation": "sets"
+            }
+        ],
+        [
+            "camera_angle",
+            "emotional_impact",
+            {
+                "relation": "affects"
+            }
+        ],
+        [
+            "camera_movement",
+            "dramatic_effect",
+            {
+                "relation": "amplifies"
+            }
+        ],
+        [
+            "audio_elements",
+            "dialogue",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "audio_elements",
+            "background_music",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "audio_elements",
+            "sound_effects",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "audio_elements",
+            "ambient_sound",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "audio_elements",
+            "voice_over",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "audio_elements",
+            "audio_mixing",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "audio_elements",
+            "volume_levels",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "dialogue",
+            "character_development",
+            {
+                "relation": "reveals"
+            }
+        ],
+        [
+            "background_music",
+            "emotional_impact",
+            {
+                "relation": "enhances"
+            }
+        ],
+        [
+            "sound_effects",
+            "atmosphere",
+            {
+                "relation": "creates"
+            }
+        ],
+        [
+            "narrative_elements",
+            "plot_point",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "narrative_elements",
+            "character_development",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "narrative_elements",
+            "story_arc",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "narrative_elements",
+            "exposition",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "narrative_elements",
+            "conflict",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "narrative_elements",
+            "resolution",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "narrative_elements",
+            "pacing",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "pacing",
+            "tension",
+            {
+                "relation": "controls"
+            }
+        ],
+        [
+            "pacing",
+            "editing_technique",
+            {
+                "relation": "determines"
+            }
+        ],
+        [
+            "technical_aspects",
+            "video_quality",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "technical_aspects",
+            "editing_technique",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "technical_aspects",
+            "transition_type",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "technical_aspects",
+            "special_effects",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "technical_aspects",
+            "color_grading",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "technical_aspects",
+            "post_processing",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "special_effects",
+            "viewer_engagement",
+            {
+                "relation": "increases"
+            }
+        ],
+        [
+            "emotional_aspects",
+            "mood",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "emotional_aspects",
+            "tension",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "emotional_aspects",
+            "emotional_impact",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "emotional_aspects",
+            "atmosphere",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "emotional_aspects",
+            "viewer_engagement",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "emotional_aspects",
+            "dramatic_effect",
+            {
+                "relation": "contains"
+            }
+        ],
+        [
+            "quality",
+            "excellent",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "quality",
+            "good",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "quality",
+            "average",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "quality",
+            "poor",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "intensity",
+            "high",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "intensity",
+            "medium",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "intensity",
+            "low",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "complexity",
+            "simple",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "complexity",
+            "moderate",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "complexity",
+            "complex",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "effectiveness",
+            "effective",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "effectiveness",
+            "neutral",
+            {
+                "relation": "has_value"
+            }
+        ],
+        [
+            "effectiveness",
+            "ineffective",
+            {
+                "relation": "has_value"
+            }
+        ]
+    ]
+}

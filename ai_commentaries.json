@@ -1,0 +1,224 @@
+[
+  {
+    "text": "The scene continues with subtle visual and audio elements",
+    "start_time": 300.0,
+    "end_time": 304.9687058348476,
+    "sentiment": {
+      "label": "POSITIVE",
+      "score": 0.9995598196983337
+    },
+    "entities": [],
+    "summary": "",
+    "key_phrases": [
+      [
+        "visual",
+        0.4082482904638631
+      ],
+      [
+        "subtle",
+        0.4082482904638631
+      ],
+      [
+        "scene",
+        0.4082482904638631
+      ],
+      [
+        "elements",
+        0.4082482904638631
+      ],
+      [
+        "continues",
+        0.4082482904638631
+      ]
+    ],
+    "relevant_concepts": []
+  },
+  {
+    "text": "The scene continues with subtle visual and audio elements",
+    "start_time": 306.61720169594184,
+    "end_time": 310.5178679588128,
+    "sentiment": {
+      "label": "POSITIVE",
+      "score": 0.9995598196983337
+    },
+    "entities": [],
+    "summary": "",
+    "key_phrases": [
+      [
+        "visual",
+        0.4082482904638631
+      ],
+      [
+        "subtle",
+        0.4082482904638631
+      ],
+      [
+        "scene",
+        0.4082482904638631
+      ],
+      [
+        "elements",
+        0.4082482904638631
+      ],
+      [
+        "continues",
+        0.4082482904638631
+      ]
+    ],
+    "relevant_concepts": []
+  },
+  {
+    "text": "The speaker conveys neutral as they explain: 'give a nice mozzarella cheese right there you're not going to grab it this afternoon you made it now can you put the love of the side effects what a good boy give her a call right now my Italian grandmother as she always said that's a spicy meatballs station'",
+    "start_time": 589.0,
+    "end_time": 609.7559088056892,
+    "sentiment": {
+      "label": "NEGATIVE",
+      "score": 0.8053585290908813
+    },
+    "entities": [
+      [
+        "this afternoon",
+        "TIME"
+      ],
+      [
+        "Italian",
+        "NORP"
+      ]
+    ],
+    "summary": "The speaker conveys neutral as they explain: 'give a nice mozzarella cheese right there you're not going to grab it this afternoon'",
+    "key_phrases": [
+      [
+        "station",
+        0.22360679774997896
+      ],
+      [
+        "spicy",
+        0.22360679774997896
+      ],
+      [
+        "boy",
+        0.22360679774997896
+      ],
+      [
+        "cheese",
+        0.22360679774997896
+      ],
+      [
+        "conveys",
+        0.22360679774997896
+      ]
+    ],
+    "relevant_concepts": []
+  },
+  {
+    "text": "The speaker conveys neutral as they explain: 'give a nice mozzarella cheese right there you're not going to grab it this afternoon you made it now can you put the love of the side effects what a good boy give her a call right now my Italian grandmother as she always said that's a spicy meatballs station'",
+    "start_time": 620.1106463083037,
+    "end_time": 622.1106463083037,
+    "sentiment": {
+      "label": "NEGATIVE",
+      "score": 0.8053585290908813
+    },
+    "entities": [
+      [
+        "this afternoon",
+        "TIME"
+      ],
+      [
+        "Italian",
+        "NORP"
+      ]
+    ],
+    "summary": "The speaker conveys neutral as they explain: 'give a nice mozzarella cheese right there you're not going to grab it this afternoon'",
+    "key_phrases": [
+      [
+        "station",
+        0.22360679774997896
+      ],
+      [
+        "spicy",
+        0.22360679774997896
+      ],
+      [
+        "boy",
+        0.22360679774997896
+      ],
+      [
+        "cheese",
+        0.22360679774997896
+      ],
+      [
+        "conveys",
+        0.22360679774997896
+      ]
+    ],
+    "relevant_concepts": []
+  },
+  {
+    "text": "The speaker conveys anger as they explain: 'stop stop'",
+    "start_time": 1000.0,
+    "end_time": 1004.7829115393546,
+    "sentiment": {
+      "label": "NEGATIVE",
+      "score": 0.9965092539787292
+    },
+    "entities": [],
+    "summary": "",
+    "key_phrases": [
+      [
+        "stop",
+        0.4472135954999579
+      ],
+      [
+        "speaker",
+        0.4472135954999579
+      ],
+      [
+        "explain",
+        0.4472135954999579
+      ],
+      [
+        "conveys",
+        0.4472135954999579
+      ],
+      [
+        "anger",
+        0.4472135954999579
+      ]
+    ],
+    "relevant_concepts": []
+  },
+  {
+    "text": "The speaker conveys anger as they explain: 'stop stop'",
+    "start_time": 1014.650568841421,
+    "end_time": 1021.1051776178315,
+    "sentiment": {
+      "label": "NEGATIVE",
+      "score": 0.9965092539787292
+    },
+    "entities": [],
+    "summary": "",
+    "key_phrases": [
+      [
+        "stop",
+        0.4472135954999579
+      ],
+      [
+        "speaker",
+        0.4472135954999579
+      ],
+      [
+        "explain",
+        0.4472135954999579
+      ],
+      [
+        "conveys",
+        0.4472135954999579
+      ],
+      [
+        "anger",
+        0.4472135954999579
+      ]
+    ],
+    "relevant_concepts": []
+  }
+]
