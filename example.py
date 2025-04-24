@@ -81,7 +81,7 @@ def find_matching_scenes(script_analysis: Dict, start_time: float, end_time: flo
 
 def main():
     # Video file path
-    video_path = "videos/How To Make Garlic Bread.mp4"
+    video_path = "" # TODO: ADD VIDEO
     
     # Define distinct segments to analyze (in seconds)
     segments = [
