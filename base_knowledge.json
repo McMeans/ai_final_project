@@ -1,573 +1,159 @@
 {
-    "nodes": {
-        "visual_elements": {
-            "type": "category"
+    "concepts": {
+        "visual": {
+            "blocking": {
+                "description": "The arrangement and movement of actors in relation to the camera",
+                "meanings": {
+                    "central": "Emphasizes importance or power",
+                    "off_center": "Creates tension or unease",
+                    "symmetrical": "Suggests balance or harmony",
+                    "asymmetrical": "Indicates conflict or imbalance",
+                    "close_proximity": "Shows intimacy or tension",
+                    "distant": "Suggests isolation or detachment"
+                }
+            },
+            "composition": {
+                "description": "The arrangement of visual elements within the frame",
+                "meanings": {
+                    "rule_of_thirds": "Creates dynamic, visually interesting shots",
+                    "leading_lines": "Guides viewer attention",
+                    "negative_space": "Emphasizes isolation or importance",
+                    "balanced": "Suggests harmony or stability",
+                    "unbalanced": "Creates tension or unease"
+                }
+            },
+            "lighting": {
+                "description": "The use of light and shadow to create mood and meaning",
+                "meanings": {
+                    "high_key": "Suggests optimism or clarity",
+                    "low_key": "Creates mystery or danger",
+                    "backlighting": "Adds depth or mystery",
+                    "side_lighting": "Reveals texture and dimension",
+                    "top_lighting": "Can create dramatic shadows"
+                }
+            },
+            "color_palette": {
+                "description": "The dominant colors used in a scene",
+                "meanings": {
+                    "warm": "Suggests passion, energy, or danger",
+                    "cool": "Indicates calm, isolation, or sadness",
+                    "monochromatic": "Focuses attention on subject",
+                    "complementary": "Creates visual tension",
+                    "desaturated": "Suggests bleakness or realism"
+                }
+            }
         },
-        "lighting": {
-            "type": "concept"
+        "audio": {
+            "sound_design": {
+                "description": "The intentional use of sound to create meaning",
+                "meanings": {
+                    "diegetic": "Creates realism and immersion",
+                    "non_diegetic": "Provides commentary or emotion",
+                    "silence": "Emphasizes tension or importance",
+                    "ambient": "Establishes setting and mood",
+                    "sound_motif": "Reinforces themes or characters"
+                }
+            },
+            "music": {
+                "description": "The use of musical elements to enhance meaning",
+                "meanings": {
+                    "leitmotif": "Associates music with characters or themes",
+                    "contrapuntal": "Creates irony or tension",
+                    "synchronous": "Reinforces on-screen action",
+                    "asynchronous": "Provides commentary or contrast"
+                }
+            },
+            "dialogue": {
+                "description": "The spoken words and their delivery",
+                "meanings": {
+                    "overlapping": "Creates realism and energy",
+                    "pauses": "Emphasizes importance or tension",
+                    "monologue": "Reveals character thoughts",
+                    "subtext": "Adds depth to character interactions"
+                }
+            }
         },
-        "composition": {
-            "type": "concept"
+        "narrative": {
+            "character_development": {
+                "description": "How characters change and grow throughout the story",
+                "meanings": {
+                    "arc": "Shows transformation or growth",
+                    "static": "Maintains consistency or serves as foil",
+                    "dynamic": "Undergoes significant change",
+                    "foil": "Highlights traits of other characters"
+                }
+            },
+            "scene_structure": {
+                "description": "The organization and pacing of scenes",
+                "meanings": {
+                    "rising_action": "Builds tension and interest",
+                    "climax": "Reaches emotional or narrative peak",
+                    "resolution": "Provides closure or new questions",
+                    "parallel": "Creates thematic connections"
+                }
+            },
+            "themes": {
+                "description": "The underlying ideas and messages",
+                "meanings": {
+                    "power": "Explores control and influence",
+                    "identity": "Examines self-discovery",
+                    "relationships": "Studies human connections",
+                    "morality": "Questions right and wrong"
+                }
+            }
         },
-        "color_scheme": {
-            "type": "concept"
-        },
-        "camera_angle": {
-            "type": "concept"
-        },
-        "camera_movement": {
-            "type": "concept"
-        },
-        "framing": {
-            "type": "concept"
-        },
-        "focus": {
-            "type": "concept"
-        },
-        "depth_of_field": {
-            "type": "concept"
-        },
-        "audio_elements": {
-            "type": "category"
-        },
-        "dialogue": {
-            "type": "concept"
-        },
-        "background_music": {
-            "type": "concept"
-        },
-        "sound_effects": {
-            "type": "concept"
-        },
-        "ambient_sound": {
-            "type": "concept"
-        },
-        "voice_over": {
-            "type": "concept"
-        },
-        "audio_mixing": {
-            "type": "concept"
-        },
-        "volume_levels": {
-            "type": "concept"
-        },
-        "narrative_elements": {
-            "type": "category"
-        },
-        "plot_point": {
-            "type": "concept"
-        },
-        "character_development": {
-            "type": "concept"
-        },
-        "story_arc": {
-            "type": "concept"
-        },
-        "exposition": {
-            "type": "concept"
-        },
-        "conflict": {
-            "type": "concept"
-        },
-        "resolution": {
-            "type": "concept"
-        },
-        "pacing": {
-            "type": "concept"
-        },
-        "technical_aspects": {
-            "type": "category"
-        },
-        "video_quality": {
-            "type": "concept"
-        },
-        "editing_technique": {
-            "type": "concept"
-        },
-        "transition_type": {
-            "type": "concept"
-        },
-        "special_effects": {
-            "type": "concept"
-        },
-        "color_grading": {
-            "type": "concept"
-        },
-        "post_processing": {
-            "type": "concept"
-        },
-        "emotional_aspects": {
-            "type": "category"
-        },
-        "mood": {
-            "type": "concept"
-        },
-        "tension": {
-            "type": "concept"
-        },
-        "emotional_impact": {
-            "type": "concept"
-        },
-        "atmosphere": {
-            "type": "concept"
-        },
-        "viewer_engagement": {
-            "type": "concept"
-        },
-        "dramatic_effect": {
-            "type": "concept"
-        },
-        "quality": {
-            "type": "descriptor_category"
-        },
-        "excellent": {
-            "type": "descriptor"
-        },
-        "good": {
-            "type": "descriptor"
-        },
-        "average": {
-            "type": "descriptor"
-        },
-        "poor": {
-            "type": "descriptor"
-        },
-        "intensity": {
-            "type": "descriptor_category"
-        },
-        "high": {
-            "type": "descriptor"
-        },
-        "medium": {
-            "type": "descriptor"
-        },
-        "low": {
-            "type": "descriptor"
-        },
-        "complexity": {
-            "type": "descriptor_category"
-        },
-        "simple": {
-            "type": "descriptor"
-        },
-        "moderate": {
-            "type": "descriptor"
-        },
-        "complex": {
-            "type": "descriptor"
-        },
-        "effectiveness": {
-            "type": "descriptor_category"
-        },
-        "effective": {
-            "type": "descriptor"
-        },
-        "neutral": {
-            "type": "descriptor"
-        },
-        "ineffective": {
-            "type": "descriptor"
+        "technical": {
+            "camera_movement": {
+                "description": "How the camera moves to create meaning",
+                "meanings": {
+                    "tracking": "Follows action or reveals space",
+                    "pan": "Surveys environment or connects elements",
+                    "tilt": "Reveals scale or creates tension",
+                    "zoom": "Focuses attention or creates impact",
+                    "steady": "Maintains objectivity or stability"
+                }
+            },
+            "editing": {
+                "description": "How shots are combined to create meaning",
+                "meanings": {
+                    "continuity": "Maintains spatial and temporal coherence",
+                    "montage": "Creates meaning through juxtaposition",
+                    "cross_cutting": "Builds tension or shows connection",
+                    "match_cut": "Creates visual or thematic links"
+                }
+            },
+            "framing": {
+                "description": "How subjects are positioned within the frame",
+                "meanings": {
+                    "close_up": "Emphasizes emotion or detail",
+                    "wide": "Establishes context or scale",
+                    "medium": "Balances detail and context",
+                    "extreme_close": "Creates intensity or intimacy"
+                }
+            }
         }
     },
-    "edges": [
-        [
-            "visual_elements",
-            "lighting",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "visual_elements",
-            "composition",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "visual_elements",
-            "color_scheme",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "visual_elements",
-            "camera_angle",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "visual_elements",
-            "camera_movement",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "visual_elements",
-            "framing",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "visual_elements",
-            "focus",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "visual_elements",
-            "depth_of_field",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "lighting",
-            "mood",
-            {
-                "relation": "influences"
-            }
-        ],
-        [
-            "color_scheme",
-            "mood",
-            {
-                "relation": "sets"
-            }
-        ],
-        [
-            "camera_angle",
-            "emotional_impact",
-            {
-                "relation": "affects"
-            }
-        ],
-        [
-            "camera_movement",
-            "dramatic_effect",
-            {
-                "relation": "amplifies"
-            }
-        ],
-        [
-            "audio_elements",
-            "dialogue",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "audio_elements",
-            "background_music",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "audio_elements",
-            "sound_effects",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "audio_elements",
-            "ambient_sound",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "audio_elements",
-            "voice_over",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "audio_elements",
-            "audio_mixing",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "audio_elements",
-            "volume_levels",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "dialogue",
-            "character_development",
-            {
-                "relation": "reveals"
-            }
-        ],
-        [
-            "background_music",
-            "emotional_impact",
-            {
-                "relation": "enhances"
-            }
-        ],
-        [
-            "sound_effects",
-            "atmosphere",
-            {
-                "relation": "creates"
-            }
-        ],
-        [
-            "narrative_elements",
-            "plot_point",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "narrative_elements",
-            "character_development",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "narrative_elements",
-            "story_arc",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "narrative_elements",
-            "exposition",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "narrative_elements",
-            "conflict",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "narrative_elements",
-            "resolution",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "narrative_elements",
-            "pacing",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "pacing",
-            "tension",
-            {
-                "relation": "controls"
-            }
-        ],
-        [
-            "pacing",
-            "editing_technique",
-            {
-                "relation": "determines"
-            }
-        ],
-        [
-            "technical_aspects",
-            "video_quality",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "technical_aspects",
-            "editing_technique",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "technical_aspects",
-            "transition_type",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "technical_aspects",
-            "special_effects",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "technical_aspects",
-            "color_grading",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "technical_aspects",
-            "post_processing",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "special_effects",
-            "viewer_engagement",
-            {
-                "relation": "increases"
-            }
-        ],
-        [
-            "emotional_aspects",
-            "mood",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "emotional_aspects",
-            "tension",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "emotional_aspects",
-            "emotional_impact",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "emotional_aspects",
-            "atmosphere",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "emotional_aspects",
-            "viewer_engagement",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "emotional_aspects",
-            "dramatic_effect",
-            {
-                "relation": "contains"
-            }
-        ],
-        [
-            "quality",
-            "excellent",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "quality",
-            "good",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "quality",
-            "average",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "quality",
-            "poor",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "intensity",
-            "high",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "intensity",
-            "medium",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "intensity",
-            "low",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "complexity",
-            "simple",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "complexity",
-            "moderate",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "complexity",
-            "complex",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "effectiveness",
-            "effective",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "effectiveness",
-            "neutral",
-            {
-                "relation": "has_value"
-            }
-        ],
-        [
-            "effectiveness",
-            "ineffective",
-            {
-                "relation": "has_value"
-            }
-        ]
-    ]
+    "relationships": {
+        "visual": {
+            "blocking": ["composition", "lighting", "framing"],
+            "composition": ["blocking", "color_palette", "framing"],
+            "lighting": ["color_palette", "mood", "framing"],
+            "color_palette": ["lighting", "mood", "themes"]
+        },
+        "audio": {
+            "sound_design": ["music", "dialogue", "mood"],
+            "music": ["sound_design", "themes", "emotion"],
+            "dialogue": ["character_development", "themes", "narrative"]
+        },
+        "narrative": {
+            "character_development": ["themes", "scene_structure", "dialogue"],
+            "scene_structure": ["themes", "character_development", "technical"],
+            "themes": ["character_development", "visual", "audio"]
+        },
+        "technical": {
+            "camera_movement": ["framing", "blocking", "editing"],
+            "editing": ["scene_structure", "camera_movement", "narrative"],
+            "framing": ["composition", "blocking", "character_development"]
+        }
+    }
 }

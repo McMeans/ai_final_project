@@ -38,13 +38,13 @@ class VideoAnalyzer:
         # Extract frames for visual analysis
         frames = self._extract_frames(video)
         
-        # Analyze visual elements
+        # Analyze visual elements with more detail
         visual_analysis = self._analyze_visual_elements(frames)
         
-        # Extract and analyze audio
+        # Extract and analyze audio with more detail
         audio_analysis = self._analyze_audio(video)
         
-        # Analyze speech and dialogue
+        # Analyze speech and dialogue with more detail
         speech_analysis = self._analyze_speech(video)
         
         # Find optimal commentary points
@@ -56,11 +56,21 @@ class VideoAnalyzer:
             start_time
         )
         
+        # Add segment-specific characteristics
+        segment_characteristics = {
+            'dominant_visual_elements': self._identify_dominant_elements(visual_analysis),
+            'audio_patterns': self._identify_audio_patterns(audio_analysis),
+            'speech_patterns': self._identify_speech_patterns(speech_analysis),
+            'scene_transitions': self._analyze_transitions(visual_analysis, audio_analysis),
+            'emotional_arc': self._analyze_emotional_arc(speech_analysis, audio_analysis)
+        }
+        
         return {
             'visual_analysis': visual_analysis,
             'audio_analysis': audio_analysis,
             'speech_analysis': speech_analysis,
-            'commentary_points': commentary_points
+            'commentary_points': commentary_points,
+            'segment_characteristics': segment_characteristics
         }
         
     def _extract_frames(self, video: VideoFileClip, fps: int = 1) -> List[np.ndarray]:
@@ -224,12 +234,12 @@ class VideoAnalyzer:
         frame_duration = len(y) / len(rms)
         current_segment = None
         
-        for i in range(len(rms)):
-            if rms[i] > speech_threshold and zcr[i] < zcr_threshold:
+        for frame_idx in range(len(rms)):
+            if rms[frame_idx] > speech_threshold and zcr[frame_idx] < zcr_threshold:
                 if current_segment is None:
-                    current_segment = {'start': i * frame_duration, 'end': (i + 1) * frame_duration}
+                    current_segment = {'start': frame_idx * frame_duration, 'end': (frame_idx + 1) * frame_duration}
                 else:
-                    current_segment['end'] = (i + 1) * frame_duration
+                    current_segment['end'] = (frame_idx + 1) * frame_duration
             else:
                 if current_segment is not None:
                     # Only keep segments longer than 0.5 seconds
@@ -322,4 +332,145 @@ class VideoAnalyzer:
                 filtered_points.append(point)
                 
         # Take at most 2 points per segment to avoid over-commenting
-        return filtered_points[:2] 
+        return filtered_points[:2]
+
+    def _identify_dominant_elements(self, visual_analysis: Dict) -> Dict:
+        """Identify the most prominent visual elements in the segment."""
+        dominant = {
+            'colors': [],
+            'composition': [],
+            'movement': []
+        }
+        
+        # Analyze color dominance
+        color_counts = {}
+        for colors in visual_analysis['color_palette']:
+            for color in colors:
+                color_counts[color] = color_counts.get(color, 0) + 1
+        dominant['colors'] = sorted(color_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+        
+        # Analyze composition patterns
+        comp_counts = {}
+        for comp in visual_analysis['composition_analysis']:
+            # Extract composition type from the dictionary
+            comp_type = None
+            if 'rule_of_thirds_scores' in comp and max(comp['rule_of_thirds_scores']) > 0.7:
+                comp_type = 'rule_of_thirds'
+            elif 'symmetry_score' in comp and comp['symmetry_score'] > 0.8:
+                comp_type = 'symmetry'
+            
+            if comp_type:
+                comp_counts[comp_type] = comp_counts.get(comp_type, 0) + 1
+        
+        dominant['composition'] = sorted(comp_counts.items(), key=lambda x: x[1], reverse=True)[:2]
+        
+        return dominant
+
+    def _identify_audio_patterns(self, audio_analysis: Dict) -> Dict:
+        """Identify patterns in the audio elements."""
+        patterns = {
+            'volume_changes': [],
+            'pitch_movements': [],
+            'rhythmic_elements': []
+        }
+        
+        # Analyze volume changes
+        volume = audio_analysis['volume_levels']
+        changes = np.diff(volume)
+        patterns['volume_changes'] = {
+            'max_increase': float(np.max(changes)),
+            'max_decrease': float(np.min(changes)),
+            'average_change': float(np.mean(np.abs(changes)))
+        }
+        
+        # Analyze pitch movements
+        if 'pitch_features' in audio_analysis:
+            pitch = audio_analysis['pitch_features']['f0']
+            patterns['pitch_movements'] = {
+                'range': float(np.max(pitch) - np.min(pitch)),
+                'average': float(np.mean(pitch)),
+                'variability': float(np.std(pitch))
+            }
+        
+        # Analyze rhythmic elements
+        if 'tempo' in audio_analysis:
+            patterns['rhythmic_elements'] = {
+                'tempo': float(audio_analysis['tempo']),
+                'consistency': float(1 - np.std(audio_analysis['volume_levels']))
+            }
+        
+        return patterns
+
+    def _identify_speech_patterns(self, speech_analysis: Dict) -> Dict:
+        """Identify patterns in speech and dialogue."""
+        patterns = {
+            'dialogue_density': 0,
+            'emotional_patterns': [],
+            'interaction_patterns': []
+        }
+        
+        # Calculate dialogue density
+        segments = speech_analysis['speech_segments']
+        total_duration = sum(seg['end'] - seg['start'] for seg in segments)
+        patterns['dialogue_density'] = total_duration / len(segments) if segments else 0
+        
+        # Analyze emotional patterns
+        if 'audio_features' in speech_analysis:
+            emotions = [f.split(': ')[1] for f in speech_analysis['audio_features'] if 'emotion' in f]
+            emotion_counts = {}
+            for emotion in emotions:
+                emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
+            patterns['emotional_patterns'] = sorted(emotion_counts.items(), key=lambda x: x[1], reverse=True)
+        
+        return patterns
+
+    def _analyze_transitions(self, visual_analysis: Dict, audio_analysis: Dict) -> Dict:
+        """Analyze how the scene transitions between different elements."""
+        transitions = {
+            'visual_changes': [],
+            'audio_changes': [],
+            'combined_impact': []
+        }
+        
+        # Analyze visual transitions
+        scene_changes = visual_analysis['scene_changes']
+        if len(scene_changes) > 1:
+            transitions['visual_changes'] = {
+                'frequency': len(scene_changes),
+                'average_duration': float(np.mean(np.diff(scene_changes))),
+                'pattern': 'regular' if np.std(np.diff(scene_changes)) < 5 else 'irregular'
+            }
+        
+        # Analyze audio transitions
+        volume = audio_analysis['volume_levels']
+        transitions['audio_changes'] = {
+            'dynamic_range': float(np.max(volume) - np.min(volume)),
+            'transition_smoothness': float(1 - np.std(np.diff(volume)))
+        }
+        
+        return transitions
+
+    def _analyze_emotional_arc(self, speech_analysis: Dict, audio_analysis: Dict) -> Dict:
+        """Analyze the emotional progression throughout the segment."""
+        arc = {
+            'start_emotion': None,
+            'end_emotion': None,
+            'progression': [],
+            'climax_points': []
+        }
+        
+        # Analyze emotional progression in speech
+        if 'audio_features' in speech_analysis:
+            emotions = [f.split(': ')[1] for f in speech_analysis['audio_features'] if 'emotion' in f]
+            if emotions:
+                arc['start_emotion'] = emotions[0]
+                arc['end_emotion'] = emotions[-1]
+                arc['progression'] = emotions
+        
+        # Identify emotional climax points
+        if 'volume_levels' in audio_analysis:
+            volume = audio_analysis['volume_levels']
+            peaks = np.where(volume > np.mean(volume) + np.std(volume))[0]
+            arc['climax_points'] = [float(p) for p in peaks]
+        
+        return arc 
