@@ -191,32 +191,57 @@ class VideoAnalyzer:
         
     def _analyze_speech(self, video: VideoFileClip) -> Dict:
         """Analyze speech and dialogue in the video."""
-        # Extract audio for speech recognition
+        # Extract audio for analysis
         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
             video.audio.write_audiofile(temp_audio.name, codec='pcm_s16le')
             
-        # Perform speech recognition
-        speech_segments = []
-        with sr.AudioFile(temp_audio.name) as source:
-            audio = self.recognizer.record(source)
-            try:
-                text = self.recognizer.recognize_google(audio)
-                # Analyze emotion in speech
-                emotion = self.emotion_recognizer(text)[0]
-                speech_segments.append({
-                    'text': text,
-                    'emotion': emotion['label'],
-                    'confidence': emotion['score']
-                })
-            except sr.UnknownValueError:
-                pass
-                
+        # Load audio with librosa
+        y, sr = librosa.load(temp_audio.name)
+        
         # Clean up temp file
         os.unlink(temp_audio.name)
         
-        return {
-            'speech_segments': speech_segments
+        # Analyze audio features that might indicate speech
+        analysis = {
+            'speech_segments': [],
+            'audio_features': {
+                'rms': librosa.feature.rms(y=y)[0],  # Root mean square energy
+                'zero_crossings': librosa.feature.zero_crossing_rate(y=y)[0],  # Zero crossing rate
+                'spectral_centroid': librosa.feature.spectral_centroid(y=y, sr=sr)[0]  # Spectral centroid
+            }
         }
+        
+        # Detect potential speech segments based on audio features
+        rms = analysis['audio_features']['rms']
+        zcr = analysis['audio_features']['zero_crossings']
+        
+        # Find segments with characteristics of speech
+        # Speech typically has higher RMS and moderate zero crossing rate
+        speech_threshold = np.mean(rms) + np.std(rms)
+        zcr_threshold = np.mean(zcr) + np.std(zcr)
+        
+        # Create simple speech segments based on audio features
+        frame_duration = len(y) / len(rms)
+        current_segment = None
+        
+        for i in range(len(rms)):
+            if rms[i] > speech_threshold and zcr[i] < zcr_threshold:
+                if current_segment is None:
+                    current_segment = {'start': i * frame_duration, 'end': (i + 1) * frame_duration}
+                else:
+                    current_segment['end'] = (i + 1) * frame_duration
+            else:
+                if current_segment is not None:
+                    # Only keep segments longer than 0.5 seconds
+                    if current_segment['end'] - current_segment['start'] > 0.5:
+                        analysis['speech_segments'].append(current_segment)
+                    current_segment = None
+        
+        # Add the last segment if it exists
+        if current_segment is not None and current_segment['end'] - current_segment['start'] > 0.5:
+            analysis['speech_segments'].append(current_segment)
+            
+        return analysis
         
     def _find_commentary_points(self, 
                               speech_segments: List[Dict],

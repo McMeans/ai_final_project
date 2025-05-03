@@ -14,6 +14,7 @@ into their creative minds during the creative process. However, these were more 
 physical media, but have become rare in the age of streaming services [1]. Along with this, it is hard
 to cover every detail in a commentary viewing. The directors are often too busy to answer all the
 questions, leaving many of the audience members still curious.
+
 2 Proposed AI Solution
 AI can help to bridge the gap by offering a similar type of commentary on the film by analyzing
 and interpreting cinematic visual and auditory elements in real time and then producing intelligent

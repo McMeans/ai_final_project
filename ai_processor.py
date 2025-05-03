@@ -51,52 +51,92 @@ class AIProcessor:
         
     def analyze_segment(self, segment_text: str) -> Dict:
         """Perform comprehensive AI analysis on a video segment."""
+        print("    Processing text with spaCy...")
         # Process text with spaCy
         doc = self.nlp(segment_text)
         
-        # Extract named entities and filter out duplicates
+        print("    Extracting named entities...")
+        # Extract named entities and filter out duplicates and numerical values
         entities = []
         seen_entities = set()
         for ent in doc.ents:
+            # Skip if the entity is purely numerical or contains numpy float values
+            if (str(ent.text).replace('.', '').replace(',', '').isdigit() or
+                str(ent.text).startswith('np.float') or
+                str(ent.text).startswith('float')):
+                continue
+                
             if (ent.text.lower(), ent.label_) not in seen_entities:
                 entities.append((ent.text, ent.label_))
                 seen_entities.add((ent.text.lower(), ent.label_))
         
-        # Generate summary if text is long enough
+        print("    Creating simple summary...")
+        # Create a simple extractive summary
         summary = ""
         if len(segment_text.split()) > 30:
-            # Set max_length based on input length
-            max_length = min(len(segment_text.split()) + 10, 130)
-            min_length = max(10, len(segment_text.split()) // 3)
-            summary = self.summarizer(segment_text, 
-                                    max_length=max_length,
-                                    min_length=min_length)[0]['summary_text']
+            # Split into sentences
+            sentences = [sent.text for sent in doc.sents]
+            # Take the first few sentences as summary
+            summary = " ".join(sentences[:3])
             
-        # Analyze sentiment
-        sentiment = self.sentiment(segment_text)[0]
+        print("    Analyzing sentiment...")
+        # Split text into chunks for sentiment analysis
+        sentences = [sent.text for sent in doc.sents]
+        chunk_size = 1  # Single sentence per chunk
+        sentiment_scores = []
         
+        for i in range(0, len(sentences), chunk_size):
+            chunk = sentences[i]  # Just take one sentence
+            try:
+                chunk_sentiment = self.sentiment(chunk)[0]
+                sentiment_scores.append(chunk_sentiment['score'])
+            except Exception as e:
+                print(f"    Warning: Sentiment analysis failed for chunk: {str(e)}")
+                continue
+        
+        # Calculate average sentiment
+        if sentiment_scores:
+            avg_score = sum(sentiment_scores) / len(sentiment_scores)
+            sentiment = {
+                'label': 'positive' if avg_score > 0 else 'negative',
+                'score': avg_score
+            }
+        else:
+            sentiment = {'label': 'neutral', 'score': 0.0}
+        
+        print("    Extracting key phrases...")
         # Extract key phrases using TF-IDF and POS tagging
         words = nltk.word_tokenize(segment_text)
         pos_tags = nltk.pos_tag(words)
         
-        # Filter for meaningful phrases (nouns, verbs, adjectives)
-        meaningful_words = [word.lower() for word, tag in pos_tags 
-                          if tag.startswith(('NN', 'VB', 'JJ')) and len(word) > 2]
+        # Filter for meaningful phrases (nouns, verbs, adjectives) and exclude numerical values
+        meaningful_words = [
+            word.lower() for word, tag in pos_tags 
+            if (tag.startswith(('NN', 'VB', 'JJ')) and 
+                len(word) > 2 and 
+                not (str(word).replace('.', '').replace(',', '').isdigit()) and  # Filter out pure numbers
+                not str(word).startswith('np.float') and  # Filter out numpy float values
+                not str(word).startswith('float') and  # Filter out float values
+                not (len(word) > 1 and all(c.isdigit() for c in word)))  # Filter out multi-digit numbers
+        ]
         
         if meaningful_words:
+            print("    Creating TF-IDF matrix...")
             # Create TF-IDF matrix from meaningful words
             text = ' '.join(meaningful_words)
             tfidf_matrix = self.tfidf.fit_transform([text])
             feature_names = self.tfidf.get_feature_names_out()
             scores = tfidf_matrix.toarray()[0]
             
-            # Get top phrases with their scores
+            # Get top phrases with their scores, ensuring they don't contain pure numbers
             key_phrases = [(feature_names[i], float(scores[i])) 
                           for i in scores.argsort()[-5:][::-1]
-                          if scores[i] > 0]  # Only include non-zero scores
+                          if scores[i] > 0 and  # Only include non-zero scores
+                          not (len(feature_names[i]) > 1 and all(c.isdigit() for c in feature_names[i]))]  # Exclude pure numbers
         else:
             key_phrases = []
             
+        print("    Analysis complete!")
         return {
             'entities': entities,
             'summary': summary,
@@ -194,34 +234,63 @@ class AIProcessor:
         }
         
     def suggest_commentary(self, segment_text: str) -> str:
-        """Generate suggested commentary using base knowledge graph insights."""
+        """Generate suggested commentary using video analysis insights."""
+        print("  Analyzing segment text...")
         # Analyze the segment
         analysis = self.analyze_segment(segment_text)
         
+        print("  Creating structured commentary...")
         # Create a structured commentary
         commentary_parts = []
         
-        # Add summary if available
-        if analysis['summary']:
-            commentary_parts.append(analysis['summary'])
-            
-        # Add insights from base knowledge graph
-        if analysis['relevant_concepts']:
-            concepts_text = "This segment demonstrates: " + ", ".join(
-                f"{concept['category']} ({', '.join(concept['concepts'][:3])})"
-                for concept in analysis['relevant_concepts'][:3]
-            )
-            commentary_parts.append(concepts_text)
-            
-        # Add sentiment insight
-        sentiment_text = f"The segment conveys a {analysis['sentiment']['label']} tone"
-        commentary_parts.append(sentiment_text)
+        # Add visual analysis commentary
+        if 'visual_analysis' in segment_text:
+            visual_parts = []
+            if 'color_palette' in segment_text:
+                visual_parts.append("The scene features a rich color palette")
+            if 'brightness_levels' in segment_text:
+                visual_parts.append("with dynamic lighting")
+            if 'scene_changes' in segment_text:
+                visual_parts.append("and smooth transitions between shots")
+            if visual_parts:
+                commentary_parts.append(" ".join(visual_parts) + ".")
         
-        # Add entity information
+        # Add audio analysis commentary
+        if 'audio_analysis' in segment_text:
+            audio_parts = []
+            if 'volume_levels' in segment_text:
+                audio_parts.append("The audio intensity varies throughout")
+            if 'pitch_features' in segment_text:
+                audio_parts.append("with a diverse range of tones")
+            if audio_parts:
+                commentary_parts.append(" ".join(audio_parts) + ".")
+        
+        # Add speech analysis commentary
+        if 'speech_analysis' in segment_text:
+            speech_parts = []
+            if 'speech_segments' in segment_text:
+                speech_parts.append("The dialogue carries emotional weight")
+            if speech_parts:
+                commentary_parts.append(" ".join(speech_parts) + ".")
+        
+        # Add key entities and phrases, filtering out numerical values
         if analysis['entities']:
-            entities_text = "Key elements mentioned: " + ", ".join([f"{ent[0]} ({ent[1]})" for ent in analysis['entities']])
-            commentary_parts.append(entities_text)
+            # Filter out entities that are purely numerical or numpy float values
+            entities = [
+                f"{ent[0]}" for ent in analysis['entities'] 
+                if not str(ent[0]).replace('.', '').replace(',', '').isdigit()  # Filter out pure numbers
+                and not str(ent[0]).startswith('np.float')  # Filter out numpy float values
+                and not str(ent[0]).startswith('float')  # Filter out float values
+                and not any(c.isdigit() for c in str(ent[0]))  # Filter out any numbers
+            ]
+            if entities:
+                commentary_parts.append(f"Key elements include {', '.join(entities)}.")
+        
+        # If no specific insights were found, create a general commentary
+        if not commentary_parts:
+            commentary_parts.append("This segment presents a compelling visual and auditory experience.")
             
+        print("  Combining commentary parts...")
         return " ".join(commentary_parts)
         
     def extract_keywords(self, text: str) -> List[str]:

@@ -12,28 +12,32 @@ class VideoCommentator:
         """Initialize the video commentator with a video file."""
         self.video_path = video_path
         self.video = VideoFileClip(video_path)
-        self.commentaries: Dict[Tuple[float, float], str] = {}  # (start_time, end_time): commentary
+        self.commentaries = []
         self.knowledge_graph = nx.Graph()
         self.ai_processor = AIProcessor(knowledge_graph_path)
         
-    def add_commentary(self, start_time: float, end_time: float, commentary: str, auto_enhance: bool = True) -> None:
-        """Add a commentary for a specific video segment with optional AI enhancement."""
+    def load_commentaries(self, json_path: str) -> None:
+        """Load commentaries from a JSON file."""
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+            self.commentaries = data['commentaries']
+            
+    def add_commentary(self, start_time: float, end_time: float, commentary: str, priority: float = 0.5, insights_used: List[str] = None) -> None:
+        """Add a commentary for a specific video segment."""
         if start_time >= end_time:
             raise ValueError("Start time must be less than end time")
         if start_time < 0 or end_time > self.video.duration:
             raise ValueError("Time stamps must be within video duration")
-        
-        if auto_enhance:
-            # Use AI to enhance the commentary
-            enhanced_commentary = self.ai_processor.suggest_commentary(commentary)
-            commentary = enhanced_commentary
             
-        self.commentaries[(start_time, end_time)] = commentary
+        self.commentaries.append({
+            'start_time': start_time,
+            'end_time': end_time,
+            'text': commentary,
+            'priority': priority,
+            'insights_used': insights_used or []
+        })
         
-        # Use AI to update knowledge graph
-        self._update_knowledge_graph(commentary, (start_time, end_time))
-        
-    def get_commentaries(self) -> Dict[Tuple[float, float], str]:
+    def get_commentaries(self) -> List[Dict]:
         """Get all commentaries."""
         return self.commentaries
     
@@ -142,30 +146,20 @@ class VideoCommentator:
         plt.close()
         
     def export_commentaries(self, output_path: str):
-        """Export commentaries with AI analysis to a JSON file."""
+        """Export commentaries to a JSON file."""
+        # Create simplified export data
         export_data = []
-        
-        for (start_time, end_time), commentary in self.commentaries.items():
-            # Get AI analysis for the segment
-            analysis = self.ai_processor.analyze_segment(commentary)
-            
-            # Create export entry with all available data
+        for commentary in self.commentaries:
             export_entry = {
-                'text': commentary,
-                'start_time': start_time,
-                'end_time': end_time,
-                'sentiment': analysis.get('sentiment', {}),
-                'entities': analysis.get('entities', []),
-                'summary': analysis.get('summary', ''),
-                'key_phrases': analysis.get('key_phrases', []),
-                'relevant_concepts': analysis.get('relevant_concepts', [])
+                'start_time': commentary['start_time'],
+                'end_time': commentary['end_time'],
+                'text': commentary['text']
             }
-            
             export_data.append(export_entry)
             
         # Save to JSON file
         with open(output_path, 'w') as f:
-            json.dump(export_data, f, indent=2)
+            json.dump({'commentaries': export_data}, f, indent=2)
             
         print(f"Commentaries exported to {output_path}")
             
