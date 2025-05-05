@@ -1,6 +1,6 @@
 import networkx as nx
 import json
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 import os
 
 class BaseKnowledgeGraph:

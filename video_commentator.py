@@ -1,10 +1,15 @@
-import os
+# System imports
+import json
 from typing import Dict, List, Tuple
-from moviepy.editor import VideoFileClip
+from datetime import timedelta
+
+# Third-party imports
 import networkx as nx
 import matplotlib.pyplot as plt
-import json
-from datetime import timedelta
+import numpy as np
+from moviepy.editor import VideoFileClip
+
+# Local imports
 from ai_processor import AIProcessor
 
 class VideoCommentator:
@@ -16,26 +21,159 @@ class VideoCommentator:
         self.knowledge_graph = nx.Graph()
         self.ai_processor = AIProcessor(knowledge_graph_path)
         
+        # MDP state variables
+        self.mdp_state = {
+            'last_commentary_end': 0.0,
+            'scene_intensity': 0.0,
+            'dialogue_presence': 0.0,
+            'visual_complexity': 0.0
+        }
+        
     def load_commentaries(self, json_path: str) -> None:
         """Load commentaries from a JSON file."""
         with open(json_path, 'r') as f:
             data = json.load(f)
             self.commentaries = data['commentaries']
             
+    def _calculate_mdp_reward(self, state: Dict, action: Dict) -> float:
+        """Calculate reward for MDP-based commentary timing."""
+        reward = 0.0
+        
+        # Reward for not interrupting important moments
+        if state['scene_intensity'] > 0.7 and action['speak']:
+            reward -= 10.0
+            
+        # Reward for maintaining good spacing between commentaries
+        time_since_last = action['start_time'] - state['last_commentary_end']
+        if time_since_last < 5.0:  # Too close to previous commentary
+            reward -= 5.0
+        elif time_since_last > 30.0:  # Too long without commentary
+            reward -= (time_since_last - 30.0) * 0.1
+            
+        # Reward for relevant insights
+        if action['insights_used']:
+            reward += len(action['insights_used']) * 2.0
+            
+        # Reward for avoiding dialogue
+        if state['dialogue_presence'] > 0.5 and action['speak']:
+            reward -= 8.0
+            
+        # Reward for matching visual complexity
+        if state['visual_complexity'] > 0.7 and action['speak']:
+            reward -= 6.0
+            
+        return reward
+        
+    def _update_mdp_state(self, analysis: Dict, time: float):
+        """Update MDP state based on current analysis."""
+        # Update scene intensity
+        self.mdp_state['scene_intensity'] = self._calculate_scene_intensity(analysis)
+        
+        # Update dialogue presence
+        self.mdp_state['dialogue_presence'] = self._calculate_dialogue_presence(analysis)
+        
+        # Update visual complexity
+        self.mdp_state['visual_complexity'] = self._calculate_visual_complexity(analysis)
+        
+    def _calculate_scene_intensity(self, analysis: Dict) -> float:
+        """Calculate current scene intensity based on various factors."""
+        intensity = 0.0
+        
+        # Audio intensity
+        if 'audio_analysis' in analysis:
+            audio = analysis['audio_analysis']
+            if 'volume_levels' in audio:
+                intensity += np.mean(audio['volume_levels']) * 0.3
+                
+        # Visual intensity
+        if 'visual_analysis' in analysis:
+            visual = analysis['visual_analysis']
+            if 'camera_movement' in visual:
+                movement = visual['camera_movement']
+                if 'movement_scores' in movement:
+                    intensity += np.mean(movement['movement_scores']) * 0.3
+                    
+        # Emotional intensity
+        if 'speech_analysis' in analysis:
+            speech = analysis['speech_analysis']
+            if 'emotion_scores' in speech:
+                intensity += np.mean(speech['emotion_scores']) * 0.4
+                
+        return float(np.clip(intensity, 0.0, 1.0))
+        
+    def _calculate_dialogue_presence(self, analysis: Dict) -> float:
+        """Calculate presence of dialogue in the scene."""
+        if 'speech_analysis' not in analysis:
+            return 0.0
+            
+        speech = analysis['speech_analysis']
+        if 'speech_segments' not in speech:
+            return 0.0
+            
+        segments = speech['speech_segments']
+        if not segments:
+            return 0.0
+            
+        # Calculate percentage of time with dialogue
+        total_duration = sum(seg['end'] - seg['start'] for seg in segments)
+        return float(np.clip(total_duration / 10.0, 0.0, 1.0))  # Normalize to 10-second window
+        
+    def _calculate_visual_complexity(self, analysis: Dict) -> float:
+        """Calculate visual complexity of the scene."""
+        if 'visual_analysis' not in analysis:
+            return 0.0
+            
+        visual = analysis['visual_analysis']
+        complexity = 0.0
+        
+        # Composition complexity
+        if 'composition_analysis' in visual:
+            comp = visual['composition_analysis']
+            if 'rule_of_thirds_scores' in comp:
+                complexity += np.std(comp['rule_of_thirds_scores']) * 0.3
+            if 'symmetry_scores' in comp:
+                complexity += np.std(comp['symmetry_scores']) * 0.3
+                
+        # Movement complexity
+        if 'camera_movement' in visual:
+            movement = visual['camera_movement']
+            if 'movement_scores' in movement:
+                complexity += np.std(movement['movement_scores']) * 0.4
+                
+        return float(np.clip(complexity, 0.0, 1.0))
+        
     def add_commentary(self, start_time: float, end_time: float, commentary: str, priority: float = 0.5, insights_used: List[str] = None) -> None:
-        """Add a commentary for a specific video segment."""
+        """Add a commentary for a specific video segment using MDP-based timing."""
         if start_time >= end_time:
             raise ValueError("Start time must be less than end time")
         if start_time < 0 or end_time > self.video.duration:
             raise ValueError("Time stamps must be within video duration")
             
-        self.commentaries.append({
+        # Calculate MDP reward for this commentary
+        action = {
+            'speak': True,
+            'start_time': start_time,
+            'end_time': end_time,
+            'insights_used': insights_used or []
+        }
+        
+        reward = self._calculate_mdp_reward(self.mdp_state, action)
+        
+        # Create a new commentary entry
+        commentary_entry = {
             'start_time': start_time,
             'end_time': end_time,
             'text': commentary,
             'priority': priority,
-            'insights_used': insights_used or []
-        })
+            'insights_used': insights_used or [],
+            'mdp_reward': reward
+        }
+        
+        # Add to commentaries list
+        self.commentaries.append(commentary_entry)
+        
+        # Update MDP state
+        self.mdp_state['last_commentary_end'] = end_time
         
     def get_commentaries(self) -> List[Dict]:
         """Get all commentaries."""
@@ -147,7 +285,7 @@ class VideoCommentator:
         
     def export_commentaries(self, output_path: str):
         """Export commentaries to a JSON file."""
-        # Create simplified export data
+        # Create export data preserving all commentaries
         export_data = []
         for commentary in self.commentaries:
             export_entry = {
@@ -157,11 +295,12 @@ class VideoCommentator:
             }
             export_data.append(export_entry)
             
-        # Save to JSON file
+        # Save to JSON file with proper formatting
         with open(output_path, 'w') as f:
             json.dump({'commentaries': export_data}, f, indent=2)
             
         print(f"Commentaries exported to {output_path}")
+        print(f"Exported {len(export_data)} commentaries")
             
     def format_timestamp(self, seconds: float) -> str:
         """Convert seconds to human-readable timestamp."""

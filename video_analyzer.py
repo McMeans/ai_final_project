@@ -1,13 +1,26 @@
+# System imports
+import os
+
+# Disable GPU/MPS before anything else
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["USE_MPS"] = "0"
+os.environ["TORCH_DEVICE"] = "cpu"
+
+# Third-party imports
 import cv2
 import numpy as np
-from moviepy.editor import VideoFileClip, AudioFileClip
-import librosa
-import torch
-from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
+from moviepy.editor import VideoFileClip
+from transformers import pipeline
 import speech_recognition as sr
-from typing import Dict, List, Tuple
-import tempfile
-import os
+from typing import Dict, List
+
+# Torch configuration
+import torch
+if hasattr(torch.backends, 'mps'):
+    torch.backends.mps.enabled = False
+if hasattr(torch.backends, 'cuda'):
+    torch.backends.cuda.enabled = False
+torch.set_default_tensor_type('torch.FloatTensor')
 
 class VideoAnalyzer:
     def __init__(self):
@@ -15,462 +28,571 @@ class VideoAnalyzer:
         # Initialize speech recognition
         self.recognizer = sr.Recognizer()
         
-        # Initialize scene detection model
-        self.scene_detector = pipeline("zero-shot-image-classification",
-                                     model="openai/clip-vit-base-patch32")
+        print("Initializing models on CPU...")
         
-        # Initialize speech detection model
-        self.audio_classifier = pipeline("audio-classification",
-                                       model="superb/hubert-base-superb-sid")
-        
-        # Initialize emotion recognition for speech
-        self.emotion_recognizer = pipeline("text-classification",
-                                         model="j-hartmann/emotion-english-distilroberta-base")
-        
-        # Set default FPS for analysis
-        self.fps = 1  # Default to 1 FPS for analysis
-        
-    def analyze_segment(self, video_path: str, start_time: float, end_time: float) -> Dict:
-        """Perform comprehensive analysis of a video segment."""
-        video = VideoFileClip(video_path).subclip(start_time, end_time)
-        segment_duration = end_time - start_time
-        
-        # Extract frames for visual analysis
-        frames = self._extract_frames(video)
-        
-        # Analyze visual elements with more detail
-        visual_analysis = self._analyze_visual_elements(frames)
-        
-        # Extract and analyze audio with more detail
-        audio_analysis = self._analyze_audio(video)
-        
-        # Analyze speech and dialogue with more detail
-        speech_analysis = self._analyze_speech(video)
-        
-        # Find optimal commentary points
-        commentary_points = self._find_commentary_points(
-            speech_analysis['speech_segments'],
-            audio_analysis['volume_levels'],
-            visual_analysis['scene_changes'],
-            segment_duration,
-            start_time
-        )
-        
-        # Add segment-specific characteristics
-        segment_characteristics = {
-            'dominant_visual_elements': self._identify_dominant_elements(visual_analysis),
-            'audio_patterns': self._identify_audio_patterns(audio_analysis),
-            'speech_patterns': self._identify_speech_patterns(speech_analysis),
-            'scene_transitions': self._analyze_transitions(visual_analysis, audio_analysis),
-            'emotional_arc': self._analyze_emotional_arc(speech_analysis, audio_analysis)
-        }
-        
-        return {
-            'visual_analysis': visual_analysis,
-            'audio_analysis': audio_analysis,
-            'speech_analysis': speech_analysis,
-            'commentary_points': commentary_points,
-            'segment_characteristics': segment_characteristics
-        }
-        
-    def _extract_frames(self, video: VideoFileClip, fps: int = 1) -> List[np.ndarray]:
-        """Extract frames from video at specified fps."""
-        frames = []
-        for t in np.arange(0, video.duration, 1/fps):
-            frame = video.get_frame(t)
-            frames.append(frame)
-        return frames
-        
-    def _analyze_visual_elements(self, frames: List[np.ndarray]) -> Dict:
-        """Analyze visual elements in the frames."""
-        analysis = {
-            'color_palette': [],
-            'brightness_levels': [],
-            'scene_changes': [],
-            'composition_analysis': []
-        }
-        
-        prev_frame = None
-        for i, frame in enumerate(frames):
-            # Analyze color palette
-            colors = self._extract_dominant_colors(frame)
-            analysis['color_palette'].append(colors)
+        try:
+            # For initial testing, let's use a simpler model setup
+            print("Loading basic models...")
             
-            # Analyze brightness
-            brightness = np.mean(frame)
-            analysis['brightness_levels'].append(brightness)
+            # Initialize a simple image classification pipeline
+            self.visual_model = pipeline(
+                "image-classification",
+                model="google/vit-base-patch16-224",
+                use_fast=True
+            )
             
-            # Detect scene changes
-            if prev_frame is not None:
-                diff = np.mean(np.abs(frame - prev_frame))
-                if diff > 50:  # Threshold for scene change
-                    analysis['scene_changes'].append(i)
+            # Initialize a simple audio classification pipeline
+            self.audio_classifier = pipeline(
+                "audio-classification",
+                model="superb/hubert-base-superb-sid",
+                use_fast=True
+            )
             
-            # Analyze composition (rule of thirds, etc.)
-            composition = self._analyze_composition(frame)
-            analysis['composition_analysis'].append(composition)
+            print("All models initialized successfully")
             
-            prev_frame = frame
+        except Exception as e:
+            print(f"Error during model initialization: {str(e)}")
+            raise
             
-        return analysis
-        
-    def _extract_dominant_colors(self, frame: np.ndarray, n_colors: int = 5) -> List[Tuple[int, int, int]]:
-        """Extract dominant colors from a frame."""
-        pixels = frame.reshape(-1, 3)
-        from sklearn.cluster import KMeans
-        kmeans = KMeans(n_clusters=n_colors)
-        kmeans.fit(pixels)
-        colors = kmeans.cluster_centers_
-        return [(int(r), int(g), int(b)) for r, g, b in colors]
-        
-    def _analyze_composition(self, frame: np.ndarray) -> Dict:
-        """Analyze frame composition."""
-        height, width = frame.shape[:2]
-        thirds_h = height // 3
-        thirds_w = width // 3
-        
-        # Analyze focus points using edge detection
-        gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        edges = cv2.Canny(gray, 100, 200)
-        
-        # Check rule of thirds points
-        roi_points = [
-            (thirds_w, thirds_h),
-            (thirds_w * 2, thirds_h),
-            (thirds_w, thirds_h * 2),
-            (thirds_w * 2, thirds_h * 2)
-        ]
-        
-        focus_scores = []
-        for x, y in roi_points:
-            roi = edges[y-20:y+20, x-20:x+20]
-            score = np.sum(roi) / 255
-            focus_scores.append(score)
-            
-        return {
-            'rule_of_thirds_scores': focus_scores,
-            'symmetry_score': self._calculate_symmetry(frame)
-        }
-        
-    def _calculate_symmetry(self, frame: np.ndarray) -> float:
-        """Calculate symmetry score of a frame."""
-        gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        height, width = gray.shape
-        mid = width // 2
-        left = gray[:, :mid]
-        right = gray[:, mid:width]
-        right_flipped = cv2.flip(right, 1)
-        
-        # Adjust sizes if needed
-        min_width = min(left.shape[1], right_flipped.shape[1])
-        symmetry_score = np.mean(np.abs(left[:, :min_width] - right_flipped[:, :min_width]))
-        return 1 - (symmetry_score / 255)  # Normalize to 0-1
-        
     def _analyze_audio(self, video: VideoFileClip) -> Dict:
         """Analyze audio elements of the video."""
-        # Extract audio
-        audio = video.audio
-        
-        # Save temporary audio file
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
-            audio.write_audiofile(temp_audio.name, codec='pcm_s16le')
-            
-        # Load audio with librosa
-        y, sr = librosa.load(temp_audio.name)
-        
-        # Clean up temp file
-        os.unlink(temp_audio.name)
-        
-        # Analyze various audio features
-        analysis = {
-            'volume_levels': librosa.feature.rms(y=y)[0],
-            'pitch_features': {
-                'f0': librosa.yin(y, fmin=librosa.note_to_hz('C2'), 
-                                fmax=librosa.note_to_hz('C7')),
-                'chroma': np.mean(librosa.feature.chroma_stft(y=y, sr=sr), axis=1)
-            },
-            'tempo': librosa.beat.tempo(y=y)[0],
-            'spectral_features': {
-                'contrast': np.mean(librosa.feature.spectral_contrast(y=y, sr=sr), axis=1),
-                'centroid': np.mean(librosa.feature.spectral_centroid(y=y, sr=sr)),
-                'bandwidth': np.mean(librosa.feature.spectral_bandwidth(y=y, sr=sr))
+        try:
+            if video.audio is None:
+                return {
+                    'volume_profile': {
+                        'levels': [],
+                        'timestamps': [],
+                        'characteristics': {
+                            'dynamic_range': 0.0,
+                            'average_volume': 0.0,
+                            'volume_variance': 0.0,
+                            'peak_count': 0,
+                            'volume_trend': 'unknown'
+                        },
+                        'peaks': []
+                    }
+                }
+
+            # Get raw audio data frame by frame
+            try:
+                fps = video.audio.fps
+                duration = video.audio.duration
+                frame_duration = 0.1  # 100ms chunks
+                timestamps = []
+                volume_levels = []
+                
+                # Process audio in 100ms chunks
+                for t in np.arange(0, duration, frame_duration):
+                    try:
+                        # Get single frame of audio
+                        frame = video.audio.get_frame(t)
+                        
+                        # Handle different frame formats
+                        if isinstance(frame, (np.ndarray, list, tuple)):
+                            # Convert frame to numpy array if it isn't already
+                            frame_array = np.array(frame, dtype=np.float32)
+                            
+                            # Handle multi-channel audio
+                            if len(frame_array.shape) > 0:
+                                # If it's a multi-dimensional array, take the mean across all dimensions
+                                volume = float(np.abs(frame_array).mean())
+                            else:
+                                # If it's a single value, just use it
+                                volume = float(np.abs(frame_array))
+                                
+                            volume_levels.append(volume)
+                            timestamps.append(float(t))
+                            
+                    except Exception as frame_error:
+                        print(f"Warning: Failed to process frame at {t}s: {str(frame_error)}")
+                        continue
+                
+                if not volume_levels:
+                    raise ValueError("No valid audio frames processed")
+                
+                # Convert to numpy arrays for calculations
+                volume_array = np.array(volume_levels, dtype=np.float32)
+                timestamps_array = np.array(timestamps, dtype=np.float32)
+                
+                # Find peaks (significant volume changes)
+                peaks = []
+                if len(volume_array) > 2:
+                    threshold = np.mean(volume_array) + np.std(volume_array)
+                    for i in range(1, len(volume_array)-1):
+                        if volume_array[i] > threshold:
+                            if volume_array[i] > volume_array[i-1] and volume_array[i] > volume_array[i+1]:
+                                peaks.append({
+                                    'time': float(timestamps_array[i]),
+                                    'intensity': float(volume_array[i])
+                                })
+                
+                # Calculate basic audio characteristics
+                audio_characteristics = {
+                    'dynamic_range': float(np.max(volume_array) - np.min(volume_array)),
+                    'average_volume': float(np.mean(volume_array)),
+                    'volume_variance': float(np.std(volume_array)),
+                    'peak_count': len(peaks),
+                    'volume_trend': 'increasing' if len(volume_array) > 1 and volume_array[-1] > volume_array[0] else 'decreasing'
+                }
+                
+                return {
+                    'volume_profile': {
+                        'levels': volume_array.tolist(),
+                        'timestamps': timestamps_array.tolist(),
+                        'characteristics': audio_characteristics,
+                        'peaks': peaks
+                    }
+                }
+                
+            except Exception as e:
+                print(f"Warning: Failed to process audio data: {str(e)}")
+                return {
+                    'volume_profile': {
+                        'levels': [],
+                        'timestamps': [],
+                        'characteristics': {
+                            'dynamic_range': 0.0,
+                            'average_volume': 0.0,
+                            'volume_variance': 0.0,
+                            'peak_count': 0,
+                            'volume_trend': 'unknown'
+                        },
+                        'peaks': []
+                    }
+                }
+                
+        except Exception as e:
+            print(f"Warning: Audio analysis failed: {str(e)}")
+            return {
+                'volume_profile': {
+                    'levels': [],
+                    'timestamps': [],
+                    'characteristics': {
+                        'dynamic_range': 0.0,
+                        'average_volume': 0.0,
+                        'volume_variance': 0.0,
+                        'peak_count': 0,
+                        'volume_trend': 'unknown'
+                    },
+                    'peaks': []
+                }
             }
-        }
-        
-        return analysis
-        
-    def _analyze_speech(self, video: VideoFileClip) -> Dict:
-        """Analyze speech and dialogue in the video."""
-        # Extract audio for analysis
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
-            video.audio.write_audiofile(temp_audio.name, codec='pcm_s16le')
+
+    def analyze_segment(self, video_path: str, start_time: float, end_time: float) -> Dict:
+        """Perform comprehensive analysis of a video segment."""
+        try:
+            print(f"Analyzing segment from {start_time} to {end_time} seconds")
             
-        # Load audio with librosa
-        y, sr = librosa.load(temp_audio.name)
-        
-        # Clean up temp file
-        os.unlink(temp_audio.name)
-        
-        # Analyze audio features that might indicate speech
-        analysis = {
-            'speech_segments': [],
-            'audio_features': {
-                'rms': librosa.feature.rms(y=y)[0],  # Root mean square energy
-                'zero_crossings': librosa.feature.zero_crossing_rate(y=y)[0],  # Zero crossing rate
-                'spectral_centroid': librosa.feature.spectral_centroid(y=y, sr=sr)[0]  # Spectral centroid
-            }
-        }
-        
-        # Detect potential speech segments based on audio features
-        rms = analysis['audio_features']['rms']
-        zcr = analysis['audio_features']['zero_crossings']
-        
-        # Find segments with characteristics of speech
-        # Speech typically has higher RMS and moderate zero crossing rate
-        speech_threshold = np.mean(rms) + np.std(rms)
-        zcr_threshold = np.mean(zcr) + np.std(zcr)
-        
-        # Create simple speech segments based on audio features
-        frame_duration = len(y) / len(rms)
-        current_segment = None
-        
-        for frame_idx in range(len(rms)):
-            if rms[frame_idx] > speech_threshold and zcr[frame_idx] < zcr_threshold:
-                if current_segment is None:
-                    current_segment = {'start': frame_idx * frame_duration, 'end': (frame_idx + 1) * frame_duration}
+            with VideoFileClip(video_path) as video:
+                # Get the segment
+                video_segment = video.subclip(start_time, end_time)
+                fps = video_segment.fps
+                duration = video_segment.duration
+                
+                # Use 2 frames per second for analysis
+                analysis_fps = 2
+                frame_interval = 1.0 / analysis_fps
+                total_frames = int(duration * analysis_fps)
+                
+                print(f"Extracting frames for analysis (Sampling at {analysis_fps} FPS from original {fps:.2f} FPS)...")
+                print(f"Processing {total_frames} frames...")
+                
+                frames = []
+                frame_times = []
+                
+                # Extract frames at regular intervals
+                for frame_idx in range(total_frames):
+                    try:
+                        # Calculate exact time for this frame
+                        frame_time = frame_idx * frame_interval
+                        frame = video_segment.get_frame(frame_time)
+                        
+                        # Ensure frame is in correct format
+                        if isinstance(frame, np.ndarray) and frame.size > 0:
+                            frames.append(frame)
+                            frame_times.append(start_time + frame_time)
+                            
+                        # Print progress every 25% of frames
+                        if frame_idx % max(1, total_frames // 4) == 0:
+                            progress = (frame_idx / total_frames) * 100
+                            print(f"Progress: {progress:.1f}% ({frame_idx}/{total_frames} frames)")
+                            
+                    except Exception as e:
+                        print(f"Warning: Failed to extract frame at {frame_time:.2f}s: {str(e)}")
+                
+                if not frames:
+                    raise ValueError("No valid frames could be extracted")
+                
+                print(f"Successfully extracted {len(frames)} frames")
+                
+                print("Analyzing visual composition...")
+                # Analyze visual composition
+                visual_analysis = {
+                    'composition': self._analyze_composition(frames, frame_times),
+                    'color_analysis': self._analyze_colors(frames, frame_times),
+                    'lighting': self._analyze_lighting(frames, frame_times),
+                    'movement': self._analyze_movement(frames, frame_times)
+                }
+                
+                print("Analyzing audio elements...")
+                # Audio analysis
+                audio_analysis = self._analyze_audio(video_segment)
+                
+                print("Analyzing scene dynamics...")
+                # Scene dynamics analysis
+                try:
+                    scene_analysis = {
+                        'pacing': self._analyze_pacing(visual_analysis, audio_analysis),
+                        'emotional_tone': self._analyze_emotional_tone(visual_analysis, audio_analysis),
+                        'key_moments': self._identify_key_moments(visual_analysis, audio_analysis)
+                    }
+                except Exception as e:
+                    print(f"Warning: Scene dynamics analysis failed: {str(e)}")
+                    scene_analysis = {
+                        'pacing': {'error': 'Analysis failed'},
+                        'emotional_tone': {'error': 'Analysis failed'},
+                        'key_moments': []
+                    }
+                
+                # Add segment metadata
+                segment_metadata = {
+                    'start_time': float(start_time),
+                    'end_time': float(end_time),
+                    'duration': float(duration),
+                    'frames_analyzed': len(frames),
+                    'original_fps': float(fps),
+                    'analysis_fps': float(analysis_fps),
+                    'frame_interval': float(frame_interval)
+                }
+                
+                # Ensure all numerical values are Python native types for JSON serialization
+                result = {
+                    'segment_info': segment_metadata,
+                    'visual_analysis': self._ensure_serializable(visual_analysis),
+                    'audio_analysis': self._ensure_serializable(audio_analysis),
+                    'scene_analysis': self._ensure_serializable(scene_analysis)
+                }
+                
+                print("Analysis completed successfully")
+                return result
+            
+        except Exception as e:
+            print(f"Error during segment analysis: {str(e)}")
+            return None
+
+    def _analyze_composition(self, frames: List[np.ndarray], times: List[float]) -> List[Dict]:
+        """Analyze visual composition of frames."""
+        compositions = []
+        for frame, time in zip(frames, times):
+            try:
+                # Ensure frame is in correct format
+                if not isinstance(frame, np.ndarray) or frame.size == 0:
+                    continue
+                    
+                # Convert to grayscale for edge detection
+                if len(frame.shape) == 3:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
                 else:
-                    current_segment['end'] = (frame_idx + 1) * frame_duration
-            else:
-                if current_segment is not None:
-                    # Only keep segments longer than 0.5 seconds
-                    if current_segment['end'] - current_segment['start'] > 0.5:
-                        analysis['speech_segments'].append(current_segment)
-                    current_segment = None
-        
-        # Add the last segment if it exists
-        if current_segment is not None and current_segment['end'] - current_segment['start'] > 0.5:
-            analysis['speech_segments'].append(current_segment)
-            
-        return analysis
-        
-    def _find_commentary_points(self, 
-                              speech_segments: List[Dict],
-                              volume_levels: np.ndarray,
-                              scene_changes: List[int],
-                              segment_duration: float,
-                              segment_start: float) -> List[Dict]:
-        """Find optimal points for commentary insertion."""
-        commentary_points = []
-        
-        # Convert volume levels to normalized scores
-        volume_scores = (volume_levels - np.min(volume_levels)) / (np.max(volume_levels) - np.min(volume_levels))
-        
-        # Find quiet segments
-        quiet_segments = []
-        threshold = 0.3  # Adjust as needed
-        min_quiet_duration = int(self.fps * 2)  # Minimum 2 seconds of quiet
-        quiet = False
-        start = 0
-        
-        for i, score in enumerate(volume_scores):
-            if score < threshold and not quiet:
-                quiet = True
-                start = i
-            elif score >= threshold and quiet:
-                quiet = False
-                if i - start >= min_quiet_duration:  # Only keep segments long enough
-                    quiet_segments.append((start, i))
+                    gray = frame
                 
-        # If no quiet segments found, create some based on scene changes
-        if not quiet_segments and scene_changes:
-            for sc in scene_changes:
-                quiet_segments.append((sc, sc + min_quiet_duration))
-        
-        # Score each quiet segment
-        for start, end in quiet_segments:
-            duration = end - start
-            
-            # Check if segment is near a scene change
-            near_scene_change = any(abs(sc - start) < 30 for sc in scene_changes)  # Within 30 frames
-            
-            # Convert frame indices to actual timestamps
-            relative_start = start / len(volume_scores) * segment_duration
-            relative_end = min((end / len(volume_scores) * segment_duration), segment_duration)
-            actual_start = segment_start + relative_start
-            actual_end = segment_start + relative_end
-            
-            # Ensure minimum commentary duration
-            if actual_end - actual_start < 2.0:  # Minimum 2 seconds
-                actual_end = actual_start + 2.0
-            
-            # Score the segment
-            score = {
-                'start_time': actual_start,
-                'end_time': min(actual_end, segment_start + segment_duration),  # Don't exceed segment
-                'duration': min(actual_end, segment_start + segment_duration) - actual_start,
-                'volume_level': float(np.mean(volume_scores[start:end])),
-                'near_scene_change': near_scene_change,
-                'priority': 1.0 if near_scene_change else 0.5  # Prioritize scene changes
-            }
-            
-            commentary_points.append(score)
-            
-        # Sort by priority and filter overlapping segments
-        commentary_points.sort(key=lambda x: (-x['priority'], x['start_time']))
-        filtered_points = []
-        
-        for point in commentary_points:
-            # Check if this point overlaps with any already selected points
-            overlaps = False
-            for selected in filtered_points:
-                if (point['start_time'] < selected['end_time'] + 1.0 and  # Add 1 second buffer
-                    point['end_time'] > selected['start_time'] - 1.0):
-                    overlaps = True
-                    break
-            
-            if not overlaps:
-                filtered_points.append(point)
+                # Detect edges
+                edges = cv2.Canny(gray, 100, 200)
                 
-        # Take at most 2 points per segment to avoid over-commenting
-        return filtered_points[:2]
+                # Analyze rule of thirds
+                h, w = gray.shape
+                third_h, third_w = h // 3, w // 3
+                thirds_grid = [
+                    float(edges[third_h:2*third_h, third_w:2*third_w].mean()),  # Center
+                    float(edges[:third_h, :].mean()),  # Top
+                    float(edges[-third_h:, :].mean()),  # Bottom
+                    float(edges[:, :third_w].mean()),  # Left
+                    float(edges[:, -third_w:].mean())   # Right
+                ]
+                
+                # Analyze symmetry
+                left_half = gray[:, :w//2]
+                right_half = cv2.flip(gray[:, w//2:], 1)
+                symmetry_score = float(1 - np.abs(left_half - right_half).mean() / 255)
+                
+                compositions.append({
+                    'time': float(time),
+                    'rule_of_thirds_intensity': float(np.mean(thirds_grid)),
+                    'symmetry_score': symmetry_score,
+                    'edge_density': float(edges.mean() / 255)
+                })
+            except Exception as e:
+                print(f"Warning: Failed to analyze composition for frame at {time}s: {str(e)}")
+                continue
+        
+        return compositions
 
-    def _identify_dominant_elements(self, visual_analysis: Dict) -> Dict:
-        """Identify the most prominent visual elements in the segment."""
-        dominant = {
-            'colors': [],
-            'composition': [],
-            'movement': []
-        }
+    def _analyze_colors(self, frames: List[np.ndarray], times: List[float]) -> List[Dict]:
+        """Analyze color palette and distribution."""
+        color_analysis = []
+        for frame, time in zip(frames, times):
+            try:
+                # Ensure frame is in correct format
+                if not isinstance(frame, np.ndarray) or frame.size == 0:
+                    continue
+                    
+                # Convert to HSV for better color analysis
+                if len(frame.shape) == 3:
+                    hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+                else:
+                    continue  # Skip grayscale frames
+                
+                # Analyze color distribution
+                hue_hist = cv2.calcHist([hsv], [0], None, [180], [0, 180])
+                sat_hist = cv2.calcHist([hsv], [1], None, [256], [0, 256])
+                val_hist = cv2.calcHist([hsv], [2], None, [256], [0, 256])
+                
+                # Find dominant colors
+                pixels = frame.reshape(-1, 3)
+                from sklearn.cluster import KMeans
+                kmeans = KMeans(n_clusters=5, n_init=1)
+                kmeans.fit(pixels)
+                colors = kmeans.cluster_centers_.astype(int)
+                
+                color_analysis.append({
+                    'time': float(time),
+                    'dominant_colors': colors.tolist(),
+                    'color_stats': {
+                        'average_hue': float(np.mean(hsv[:,:,0])),
+                        'average_saturation': float(np.mean(hsv[:,:,1])),
+                        'average_value': float(np.mean(hsv[:,:,2])),
+                        'color_variance': float(np.std(frame.reshape(-1, 3)))
+                    }
+                })
+            except Exception as e:
+                print(f"Warning: Failed to analyze colors for frame at {time}s: {str(e)}")
+                continue
         
-        # Analyze color dominance
-        color_counts = {}
-        for colors in visual_analysis['color_palette']:
-            for color in colors:
-                color_counts[color] = color_counts.get(color, 0) + 1
-        dominant['colors'] = sorted(color_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+        return color_analysis
+
+    def _analyze_lighting(self, frames: List[np.ndarray], times: List[float]) -> List[Dict]:
+        """Analyze lighting conditions and patterns."""
+        lighting_analysis = []
+        for frame, time in zip(frames, times):
+            try:
+                # Ensure frame is in correct format
+                if not isinstance(frame, np.ndarray) or frame.size == 0:
+                    continue
+                    
+                # Convert to grayscale for lighting analysis
+                if len(frame.shape) == 3:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+                else:
+                    gray = frame
+                
+                # Calculate histogram
+                hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
+                hist = hist.flatten() / hist.sum()
+                
+                # Calculate lighting metrics
+                brightness = float(np.mean(gray))
+                contrast = float(np.std(gray))
+                
+                # Analyze light direction using gradients
+                dx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+                dy = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+                gradient_magnitude = np.sqrt(dx**2 + dy**2)
+                gradient_direction = np.arctan2(dy, dx)
+                
+                lighting_analysis.append({
+                    'time': float(time),
+                    'brightness': brightness,
+                    'contrast': contrast,
+                    'histogram_stats': {
+                        'shadows': float(np.sum(hist[:85])),
+                        'midtones': float(np.sum(hist[85:170])),
+                        'highlights': float(np.sum(hist[170:]))
+                    },
+                    'gradient_stats': {
+                        'magnitude': float(np.mean(gradient_magnitude)),
+                        'direction': float(np.mean(gradient_direction))
+                    }
+                })
+            except Exception as e:
+                print(f"Warning: Failed to analyze lighting for frame at {time}s: {str(e)}")
+                continue
         
-        # Analyze composition patterns
-        comp_counts = {}
-        for comp in visual_analysis['composition_analysis']:
-            # Extract composition type from the dictionary
-            comp_type = None
-            if 'rule_of_thirds_scores' in comp and max(comp['rule_of_thirds_scores']) > 0.7:
-                comp_type = 'rule_of_thirds'
-            elif 'symmetry_score' in comp and comp['symmetry_score'] > 0.8:
-                comp_type = 'symmetry'
+        return lighting_analysis
+
+    def _analyze_movement(self, frames: List[np.ndarray], times: List[float]) -> Dict:
+        """Analyze camera and subject movement."""
+        movement_analysis = []
+        prev_frame = None
+        
+        for frame, time in zip(frames, times):
+            if prev_frame is not None:
+                # Calculate optical flow
+                prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_RGB2GRAY)
+                curr_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+                flow = cv2.calcOpticalFlowFarneback(prev_gray, curr_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+                
+                # Analyze flow patterns
+                magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+                
+                movement_analysis.append({
+                    'time': time,
+                    'movement_intensity': float(np.mean(magnitude)),
+                    'movement_direction': float(np.mean(angle)),
+                    'movement_variance': float(np.std(magnitude)),
+                    'movement_type': self._classify_movement(magnitude, angle)
+                })
             
-            if comp_type:
-                comp_counts[comp_type] = comp_counts.get(comp_type, 0) + 1
+            prev_frame = frame
         
-        dominant['composition'] = sorted(comp_counts.items(), key=lambda x: x[1], reverse=True)[:2]
-        
-        return dominant
+        return movement_analysis
 
-    def _identify_audio_patterns(self, audio_analysis: Dict) -> Dict:
-        """Identify patterns in the audio elements."""
-        patterns = {
-            'volume_changes': [],
-            'pitch_movements': [],
-            'rhythmic_elements': []
-        }
-        
-        # Analyze volume changes
-        volume = audio_analysis['volume_levels']
-        changes = np.diff(volume)
-        patterns['volume_changes'] = {
-            'max_increase': float(np.max(changes)),
-            'max_decrease': float(np.min(changes)),
-            'average_change': float(np.mean(np.abs(changes)))
-        }
-        
-        # Analyze pitch movements
-        if 'pitch_features' in audio_analysis:
-            pitch = audio_analysis['pitch_features']['f0']
-            patterns['pitch_movements'] = {
-                'range': float(np.max(pitch) - np.min(pitch)),
-                'average': float(np.mean(pitch)),
-                'variability': float(np.std(pitch))
+    def _analyze_pacing(self, visual_analysis: Dict, audio_analysis: Dict) -> Dict:
+        """Analyze the pacing of the scene."""
+        try:
+            # Extract visual changes safely
+            visual_changes = []
+            if 'composition' in visual_analysis:
+                compositions = visual_analysis['composition']
+                if compositions and isinstance(compositions, list):
+                    visual_changes = [comp.get('edge_density', 0.0) for comp in compositions]
+            
+            # Extract audio changes safely
+            audio_changes = []
+            if 'volume_profile' in audio_analysis:
+                profile = audio_analysis['volume_profile']
+                if isinstance(profile, dict) and 'levels' in profile:
+                    audio_changes = profile['levels']
+            
+            # Ensure we have some data to analyze
+            if not visual_changes and not audio_changes:
+                return {
+                    'visual_pace': {'average': 0.0, 'variance': 0.0},
+                    'audio_pace': {'average': 0.0, 'variance': 0.0}
+                }
+            
+            # Calculate pacing metrics
+            result = {
+                'visual_pace': {
+                    'average': float(np.mean(visual_changes)) if visual_changes else 0.0,
+                    'variance': float(np.std(visual_changes)) if visual_changes else 0.0
+                },
+                'audio_pace': {
+                    'average': float(np.mean(audio_changes)) if audio_changes else 0.0,
+                    'variance': float(np.std(audio_changes)) if audio_changes else 0.0
+                }
             }
-        
-        # Analyze rhythmic elements
-        if 'tempo' in audio_analysis:
-            patterns['rhythmic_elements'] = {
-                'tempo': float(audio_analysis['tempo']),
-                'consistency': float(1 - np.std(audio_analysis['volume_levels']))
+            
+            return result
+            
+        except Exception as e:
+            print(f"Warning: Pacing analysis failed: {str(e)}")
+            return {
+                'visual_pace': {'average': 0.0, 'variance': 0.0},
+                'audio_pace': {'average': 0.0, 'variance': 0.0}
             }
-        
-        return patterns
 
-    def _identify_speech_patterns(self, speech_analysis: Dict) -> Dict:
-        """Identify patterns in speech and dialogue."""
-        patterns = {
-            'dialogue_density': 0,
-            'emotional_patterns': [],
-            'interaction_patterns': []
-        }
-        
-        # Calculate dialogue density
-        segments = speech_analysis['speech_segments']
-        total_duration = sum(seg['end'] - seg['start'] for seg in segments)
-        patterns['dialogue_density'] = total_duration / len(segments) if segments else 0
-        
-        # Analyze emotional patterns
-        if 'audio_features' in speech_analysis:
-            emotions = [f.split(': ')[1] for f in speech_analysis['audio_features'] if 'emotion' in f]
-            emotion_counts = {}
-            for emotion in emotions:
-                emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
-            patterns['emotional_patterns'] = sorted(emotion_counts.items(), key=lambda x: x[1], reverse=True)
-        
-        return patterns
-
-    def _analyze_transitions(self, visual_analysis: Dict, audio_analysis: Dict) -> Dict:
-        """Analyze how the scene transitions between different elements."""
-        transitions = {
-            'visual_changes': [],
-            'audio_changes': [],
-            'combined_impact': []
-        }
-        
-        # Analyze visual transitions
-        scene_changes = visual_analysis['scene_changes']
-        if len(scene_changes) > 1:
-            transitions['visual_changes'] = {
-                'frequency': len(scene_changes),
-                'average_duration': float(np.mean(np.diff(scene_changes))),
-                'pattern': 'regular' if np.std(np.diff(scene_changes)) < 5 else 'irregular'
+    def _analyze_emotional_tone(self, visual_analysis: Dict, audio_analysis: Dict) -> Dict:
+        """Analyze the emotional tone of the scene."""
+        try:
+            # Initialize default values
+            color_temps = []
+            light_intensity = []
+            
+            # Safely extract color information
+            if 'color_analysis' in visual_analysis:
+                colors = visual_analysis['color_analysis']
+                if isinstance(colors, list):
+                    for color_data in colors:
+                        if isinstance(color_data, dict) and 'color_stats' in color_data:
+                            stats = color_data['color_stats']
+                            r = stats.get('average_hue', 0)
+                            g = stats.get('average_saturation', 0)
+                            b = stats.get('average_value', 0)
+                            if all(isinstance(x, (int, float)) for x in [r, g, b]):
+                                temp = (r * 2 + b) / max(g * 3, 1)  # Avoid division by zero
+                                color_temps.append(float(temp))
+            
+            # Safely extract lighting information
+            if 'lighting' in visual_analysis:
+                lighting = visual_analysis['lighting']
+                if isinstance(lighting, list):
+                    light_intensity = [light.get('brightness', 0.0) for light in lighting if isinstance(light, dict)]
+            
+            # Calculate metrics with safe fallbacks
+            result = {
+                'color_temperature': {
+                    'average': float(np.mean(color_temps)) if color_temps else 0.0,
+                    'variance': float(np.std(color_temps)) if color_temps else 0.0
+                },
+                'lighting_mood': {
+                    'average_intensity': float(np.mean(light_intensity)) if light_intensity else 0.0,
+                    'contrast_level': float(np.std(light_intensity)) if light_intensity else 0.0
+                }
             }
-        
-        # Analyze audio transitions
-        volume = audio_analysis['volume_levels']
-        transitions['audio_changes'] = {
-            'dynamic_range': float(np.max(volume) - np.min(volume)),
-            'transition_smoothness': float(1 - np.std(np.diff(volume)))
-        }
-        
-        return transitions
+            
+            return result
+            
+        except Exception as e:
+            print(f"Warning: Emotional tone analysis failed: {str(e)}")
+            return {
+                'color_temperature': {'average': 0.0, 'variance': 0.0},
+                'lighting_mood': {'average_intensity': 0.0, 'contrast_level': 0.0}
+            }
 
-    def _analyze_emotional_arc(self, speech_analysis: Dict, audio_analysis: Dict) -> Dict:
-        """Analyze the emotional progression throughout the segment."""
-        arc = {
-            'start_emotion': None,
-            'end_emotion': None,
-            'progression': [],
-            'climax_points': []
-        }
+    def _identify_key_moments(self, visual_analysis: Dict, audio_analysis: Dict) -> List[Dict]:
+        """Identify key moments in the scene."""
+        key_moments = []
         
-        # Analyze emotional progression in speech
-        if 'audio_features' in speech_analysis:
-            emotions = [f.split(': ')[1] for f in speech_analysis['audio_features'] if 'emotion' in f]
-            if emotions:
-                arc['start_emotion'] = emotions[0]
-                arc['end_emotion'] = emotions[-1]
-                arc['progression'] = emotions
+        # Look for significant visual changes
+        for i, comp in enumerate(visual_analysis['composition']):
+            if i > 0:
+                edge_change = abs(comp['edge_density'] - visual_analysis['composition'][i-1]['edge_density'])
+                if edge_change > 0.2:  # Significant composition change
+                    key_moments.append({
+                        'time': comp['time'],
+                        'type': 'visual_change',
+                        'intensity': float(edge_change)
+                    })
         
-        # Identify emotional climax points
-        if 'volume_levels' in audio_analysis:
-            volume = audio_analysis['volume_levels']
-            peaks = np.where(volume > np.mean(volume) + np.std(volume))[0]
-            arc['climax_points'] = [float(p) for p in peaks]
+        # Add audio key moments
+        if 'peaks' in audio_analysis['volume_profile']:
+            for peak in audio_analysis['volume_profile']['peaks']:
+                key_moments.append({
+                    'time': peak['time'],
+                    'type': 'audio_peak',
+                    'intensity': float(peak['intensity'])
+                })
         
-        return arc 
+        # Sort by time
+        key_moments.sort(key=lambda x: x['time'])
+        return key_moments
+
+    def _classify_movement(self, magnitude: np.ndarray, angle: np.ndarray) -> str:
+        """Classify the type of movement based on optical flow."""
+        avg_magnitude = np.mean(magnitude)
+        angle_hist = np.histogram(angle, bins=8)[0]
+        
+        if avg_magnitude < 0.1:
+            return "static"
+        elif np.std(angle_hist) < np.mean(angle_hist) * 0.5:
+            return "uniform_motion"
+        elif np.max(angle_hist) > np.sum(angle_hist) * 0.4:
+            return "directional_motion"
+        else:
+            return "complex_motion"
+
+    def _ensure_serializable(self, obj):
+        """Ensure all values in a nested structure are JSON serializable."""
+        if isinstance(obj, (np.int64, np.int32, np.int16, np.int8,
+                          np.uint64, np.uint32, np.uint16, np.uint8)):
+            return int(obj)
+        elif isinstance(obj, (np.float64, np.float32, np.float16)):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {key: self._ensure_serializable(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._ensure_serializable(item) for item in obj]
+        elif isinstance(obj, tuple):
+            return tuple(self._ensure_serializable(item) for item in obj)
+        return obj 

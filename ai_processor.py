@@ -1,53 +1,99 @@
-import spacy
-import torch
-from transformers import pipeline
+# System imports
+import os
 from typing import List, Dict, Tuple
-import nltk
-from nltk.tokenize import sent_tokenize
-from nltk.corpus import stopwords
-from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Disable GPU/MPS before anything else
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["USE_MPS"] = "0"
+os.environ["TORCH_DEVICE"] = "cpu"
+
+# Third-party imports
 import numpy as np
+import spacy
+import nltk
+from sklearn.feature_extraction.text import TfidfVectorizer
+import gc
+
+# Torch and transformers
+import torch
+torch.set_default_tensor_type('torch.FloatTensor')  # Force CPU tensor type
+from transformers import pipeline
+
+# Local imports
 from base_knowledge_graph import BaseKnowledgeGraph
 
 class AIProcessor:
     def __init__(self, knowledge_graph_path: str = None):
         """Initialize the AI processor with necessary models and tools."""
-        # Download required NLTK data
+        print("Initializing NLP models on CPU...")
+        
         try:
-            nltk.data.find('tokenizers/punkt')
-            nltk.data.find('tokenizers/punkt_tab')
-            nltk.data.find('taggers/averaged_perceptron_tagger_eng')
-        except LookupError:
-            print("Downloading required NLTK data...")
-            nltk.download('punkt')
-            nltk.download('punkt_tab')
-            nltk.download('stopwords')
-            nltk.download('averaged_perceptron_tagger')
-            nltk.download('averaged_perceptron_tagger_eng')
+            # Download required NLTK data
+            try:
+                nltk.data.find('tokenizers/punkt')
+                nltk.data.find('tokenizers/punkt_tab')
+                nltk.data.find('taggers/averaged_perceptron_tagger_eng')
+            except LookupError:
+                print("Downloading required NLTK data...")
+                nltk.download('punkt')
+                nltk.download('punkt_tab')
+                nltk.download('stopwords')
+                nltk.download('averaged_perceptron_tagger')
+                nltk.download('averaged_perceptron_tagger_eng')
+                
+            # Load spaCy model for NLP tasks
+            print("Loading spaCy model...")
+            self.nlp = spacy.load('en_core_web_sm')
             
-        # Load spaCy model for NLP tasks
-        self.nlp = spacy.load('en_core_web_sm')
-        
-        # Initialize specialized pipelines
-        self.emotion_classifier = pipeline(
-            "text-classification",
-            model="j-hartmann/emotion-english-distilroberta-base"
-        )
-        
-        self.zero_shot = pipeline(
-            "zero-shot-classification",
-            model="facebook/bart-large-mnli"
-        )
-        
-        # Initialize transformers for various tasks
-        self.summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-        self.sentiment = pipeline("sentiment-analysis")
-        
-        # Initialize TF-IDF vectorizer for keyword extraction
-        self.tfidf = TfidfVectorizer(stop_words='english')
-        
-        # Load or create base knowledge graph
-        self.base_knowledge = BaseKnowledgeGraph.load_from_file(knowledge_graph_path) if knowledge_graph_path else BaseKnowledgeGraph()
+            # Initialize specialized pipelines
+            print("Loading emotion classifier...")
+            self.emotion_classifier = pipeline(
+                "text-classification",
+                model="j-hartmann/emotion-english-distilroberta-base",
+                use_fast=True,
+                framework="pt"
+            )
+            
+            print("Loading zero-shot classifier...")
+            self.zero_shot = pipeline(
+                "zero-shot-classification",
+                model="facebook/bart-large-mnli",
+                use_fast=True,
+                framework="pt"
+            )
+            
+            # Initialize transformers for various tasks
+            print("Loading summarizer...")
+            self.summarizer = pipeline(
+                "summarization",
+                model="facebook/bart-large-cnn",
+                use_fast=True,
+                framework="pt"
+            )
+            
+            print("Loading sentiment analyzer...")
+            self.sentiment = pipeline(
+                "sentiment-analysis",
+                model="distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+                use_fast=True,
+                framework="pt"
+            )
+            
+            # Initialize TF-IDF vectorizer for keyword extraction
+            self.tfidf = TfidfVectorizer(stop_words='english')
+            
+            # Load or create base knowledge graph
+            print("Loading knowledge graph...")
+            self.base_knowledge = BaseKnowledgeGraph.load_from_file(knowledge_graph_path) if knowledge_graph_path else BaseKnowledgeGraph()
+            
+            # Clear any unused memory
+            gc.collect()
+            
+            print("All NLP models initialized successfully")
+            
+        except Exception as e:
+            print(f"Error during NLP model initialization: {str(e)}")
+            raise
         
     def analyze_segment(self, segment_text: str) -> Dict:
         """Perform comprehensive AI analysis on a video segment."""
@@ -233,166 +279,184 @@ class AIProcessor:
             'timestamp': timestamp
         }
         
-    def suggest_commentary(self, segment_text: str) -> str:
-        """Generate detailed, scene-specific commentary based on video analysis and film theory."""
-        # Parse insights from segment text
-        insights = {
-            'visual': {},
-            'audio': {},
-            'speech': {},
-            'characteristics': {}
-        }
-        
-        current_section = None
-        subsection = None
-        for line in segment_text.split('\n'):
-            line = line.strip()
-            if not line:
-                continue
+    def suggest_commentary(self, analysis_data: Dict) -> str:
+        """Generate detailed, scene-specific commentary based on video analysis."""
+        try:
+            commentary_parts = []
             
-            # Handle main sections
-            if line.endswith(':') and not line.startswith(' '):
-                current_section = line[:-1]
-                subsection = None
-                insights[current_section] = {}
-                continue
-            
-            # Handle subsections
-            if line.endswith(':') and line.startswith('  '):
-                subsection = line.strip()[:-1]
-                insights[current_section][subsection] = {}
-                continue
-            
-            # Handle key-value pairs
-            if ':' in line:
-                parts = line.strip().split(':', 1)
-                if len(parts) == 2:
-                    key = parts[0].strip()
-                    value = parts[1].strip()
-                    
-                    if subsection:
-                        insights[current_section][subsection][key] = value
-                    else:
-                        insights[current_section][key] = value
-
-        # Generate scene-specific commentary
-        commentary_parts = []
-        
-        # Visual Analysis with Scene Context
-        if 'visual_analysis' in insights:
-            visual = insights['visual_analysis']
-            
-            # Scene Composition and Blocking
-            if 'composition_analysis' in visual:
-                comp = visual['composition_analysis']
-                if 'rule_of_thirds_scores' in comp:
-                    scores = [float(s) for s in comp['rule_of_thirds_scores'].split(', ')]
-                    if max(scores) > 0.7:
-                        commentary_parts.append("The director's use of the rule of thirds creates a dynamic frame where the characters' positions and movements carry significant narrative weight")
-                    elif max(scores) < 0.3:
-                        commentary_parts.append("The unconventional framing choices reflect the characters' emotional state and the scene's underlying tension")
+            # Analyze Visual Composition
+            if 'visual_analysis' in analysis_data:
+                visual = analysis_data['visual_analysis']
                 
-                if 'symmetry_score' in comp:
-                    sym_score = float(comp['symmetry_score'])
-                    if sym_score > 0.8:
-                        commentary_parts.append("The symmetrical composition mirrors the characters' internal conflicts, creating a visual metaphor for their struggle")
-                    elif sym_score < 0.3:
-                        commentary_parts.append("The deliberately unbalanced composition visually represents the power dynamics at play in the scene")
-            
-            # Color and Lighting Analysis
-            if 'color_palette' in visual:
-                colors = visual['color_palette'].split(', ')
-                if colors:
-                    color_desc = self._describe_colors(colors)
-                    color_meaning = self._interpret_color_meaning(colors)
-                    commentary_parts.append(f"The {color_desc} color scheme {color_meaning}, reinforcing the scene's emotional core")
-            
-            # Scene Transitions
-            if 'scene_changes' in visual:
-                changes = visual['scene_changes'].split(', ')
-                if len(changes) > 3:
-                    commentary_parts.append("The rapid editing style creates a sense of urgency, mirroring the characters' escalating situation")
-                elif len(changes) == 1:
-                    commentary_parts.append("The sustained single take allows the audience to fully immerse themselves in the characters' emotional journey")
-        
-        # Audio and Dialogue Analysis
-        if 'audio_analysis' in insights:
-            audio = insights['audio_analysis']
-            
-            # Sound Design
-            if 'volume_levels' in audio:
-                vol = float(audio['volume_levels'])
-                if vol > 0.7:
-                    commentary_parts.append("The heightened sound design amplifies the scene's dramatic impact, drawing attention to key emotional moments")
-                elif vol < 0.3:
-                    commentary_parts.append("The subtle sound design creates an intimate atmosphere, allowing the characters' quiet moments to resonate")
-            
-            # Music and Rhythm
-            if 'pitch_features' in audio and 'tempo' in audio:
-                tempo = float(audio['tempo'])
-                if 'pitch_movements' in insights.get('characteristics', {}).get('audio_patterns', {}):
-                    pitch_data = insights['characteristics']['audio_patterns']['pitch_movements']
-                    if 'range' in pitch_data and 'variability' in pitch_data:
-                        pitch_range = float(pitch_data['range'].split('=')[1])
-                        variability = float(pitch_data['variability'].split('=')[1])
+                # Composition Analysis
+                if 'composition' in visual and visual['composition']:
+                    compositions = visual['composition']
+                    if isinstance(compositions, list) and compositions:
+                        # Analyze composition trends
+                        symmetry_scores = [comp.get('symmetry_score', 0) for comp in compositions]
+                        thirds_scores = [comp.get('rule_of_thirds_intensity', 0) for comp in compositions]
+                        edge_density = [comp.get('edge_density', 0) for comp in compositions]
                         
-                        if pitch_range > 1000 and tempo > 120:
-                            commentary_parts.append("The dynamic musical score underscores the scene's emotional peaks and valleys, enhancing the narrative tension")
-                        elif pitch_range < 500 and tempo < 80:
-                            commentary_parts.append("The restrained musical accompaniment allows the characters' emotional journey to take center stage")
-        
-        # Character and Narrative Analysis
-        if 'speech_analysis' in insights:
-            speech = insights['speech_analysis']
-            
-            if 'speech_segments' in speech:
-                segments = speech['speech_segments'].split('\n')
-                segment_count = len([s for s in segments if 'segment_' in s])
+                        # Overall composition style
+                        avg_symmetry = np.mean(symmetry_scores)
+                        avg_thirds = np.mean(thirds_scores)
+                        composition_variance = np.std(edge_density)
+                        
+                        # More specific symmetry observations
+                        if avg_symmetry > 0.8:
+                            commentary_parts.append("The near-perfect symmetry creates a sense of order and control, suggesting the characters' mastery of their environment")
+                        elif avg_symmetry > 0.7:
+                            commentary_parts.append("The balanced composition reflects the scene's equilibrium, with each element carefully positioned to maintain visual harmony")
+                        elif avg_symmetry < 0.2:
+                            commentary_parts.append("The extreme asymmetry destabilizes the frame, mirroring the characters' emotional turmoil")
+                        elif avg_symmetry < 0.3:
+                            commentary_parts.append("The deliberately off-balance framing creates a sense of unease, hinting at underlying tensions")
+                        
+                        # More nuanced rule of thirds analysis
+                        if avg_thirds > 0.8:
+                            commentary_parts.append("The precise application of the rule of thirds creates a dynamic tension between foreground and background elements")
+                        elif avg_thirds > 0.6:
+                            commentary_parts.append("The strategic placement of key elements along the thirds lines guides the viewer's attention through the scene")
+                        
+                        # More detailed composition variance analysis
+                        if composition_variance > 0.3:
+                            commentary_parts.append("The dramatic shifts in visual complexity create a rhythmic pattern that mirrors the scene's emotional arc")
+                        elif composition_variance > 0.2:
+                            commentary_parts.append("The evolving frame density suggests a deliberate progression in the scene's visual storytelling")
                 
-                if segment_count > 5:
-                    commentary_parts.append("The dense dialogue reveals the complex web of relationships and motivations driving the scene forward")
-                elif segment_count == 0:
-                    commentary_parts.append("The absence of dialogue speaks volumes about the characters' unspoken emotions and the weight of the moment")
-                else:
-                    commentary_parts.append("The carefully chosen words carry significant emotional weight, revealing the characters' true feelings beneath the surface")
-        
-        # Emotional Arc Analysis
-        if 'emotional_arc' in insights.get('characteristics', {}):
-            arc = insights['characteristics']['emotional_arc']
-            if 'start_emotion' in arc and 'end_emotion' in arc:
-                start = arc['start_emotion'].split('=')[1]
-                end = arc['end_emotion'].split('=')[1]
-                if start != end:
-                    commentary_parts.append(f"The characters' emotional journey from {start} to {end} reveals their growth and the scene's transformative power")
+                # Enhanced Color Analysis
+                if 'color_analysis' in visual and visual['color_analysis']:
+                    colors = visual['color_analysis']
+                    if isinstance(colors, list) and colors:
+                        # Analyze color trends
+                        saturation_levels = [c['color_stats'].get('average_saturation', 0) for c in colors]
+                        hue_levels = [c['color_stats'].get('average_hue', 0) for c in colors]
+                        dominant_colors = [c.get('dominant_colors', []) for c in colors]
+                        
+                        avg_saturation = np.mean(saturation_levels)
+                        hue_variance = np.std(hue_levels)
+                        
+                        # More specific color observations
+                        if avg_saturation > 180:
+                            commentary_parts.append("The vibrant, saturated colors create an almost surreal atmosphere, heightening the scene's emotional intensity")
+                        elif avg_saturation > 128:
+                            commentary_parts.append("The rich color palette enhances the scene's visual impact, drawing attention to key narrative elements")
+                        elif avg_saturation < 40:
+                            commentary_parts.append("The desaturated tones create a stark, minimalist aesthetic that emphasizes the scene's emotional weight")
+                        
+                        # Analyze color transitions
+                        if hue_variance > 40:
+                            commentary_parts.append("The bold color transitions create a visual rhythm that underscores the scene's dramatic progression")
+                        elif hue_variance > 30:
+                            commentary_parts.append("The subtle shifts in color temperature reflect the evolving emotional landscape of the scene")
+                        
+                        # Analyze dominant colors
+                        if dominant_colors:
+                            color_meaning = self._interpret_color_meaning(dominant_colors[0])
+                            commentary_parts.append(f"The dominant color scheme {color_meaning}")
+                
+                # Enhanced Lighting Analysis
+                if 'lighting' in visual and visual['lighting']:
+                    lighting = visual['lighting']
+                    if isinstance(lighting, list) and lighting:
+                        # Analyze lighting trends
+                        brightness_levels = [light.get('brightness', 0) for light in lighting]
+                        contrast_levels = [light.get('contrast', 0) for light in lighting]
+                        shadow_ratios = [light.get('histogram_stats', {}).get('shadows', 0) for light in lighting]
+                        gradient_stats = [light.get('gradient_stats', {}) for light in lighting]
+                        
+                        avg_brightness = np.mean(brightness_levels)
+                        avg_contrast = np.mean(contrast_levels)
+                        shadow_presence = np.mean(shadow_ratios)
+                        
+                        # More specific lighting observations
+                        if avg_brightness > 200:
+                            commentary_parts.append("The high-key lighting creates an almost ethereal atmosphere, suggesting a moment of revelation or clarity")
+                        elif avg_brightness > 180:
+                            commentary_parts.append("The bright, even lighting exposes every detail, creating a sense of transparency and honesty")
+                        elif avg_brightness < 50:
+                            commentary_parts.append("The deep shadows and low-key lighting create a sense of mystery and psychological depth")
+                        
+                        # More nuanced contrast analysis
+                        if avg_contrast > 70:
+                            commentary_parts.append("The stark contrast between light and shadow creates a dramatic chiaroscuro effect, emphasizing the scene's emotional extremes")
+                        elif avg_contrast > 50:
+                            commentary_parts.append("The strong contrast sculpts the scene with light and shadow, adding depth and dimension to the visual storytelling")
+                        
+                        # More detailed shadow analysis
+                        if shadow_presence > 0.6:
+                            commentary_parts.append("The pervasive shadows create a sense of foreboding, suggesting hidden depths and unspoken tensions")
+                        elif shadow_presence > 0.4:
+                            commentary_parts.append("The strategic use of shadows adds layers of meaning to the scene, creating visual subtext")
             
-            if 'climax_points' in arc:
-                climax_points = arc['climax_points'].split(', ')
-                if climax_points:
-                    commentary_parts.append("The scene's emotional peaks create a powerful narrative rhythm, building to moments of significant character revelation")
-        
-        # Combine all parts into a coherent commentary
-        if commentary_parts:
-            # Add a concluding observation that ties everything together
-            dramatic_keywords = ['tension', 'conflict', 'intense']
-            overall_tone = "dramatic" if any(keyword in part.lower() for keyword in dramatic_keywords for part in commentary_parts) else "nuanced"
+            # Enhanced Scene Dynamics Analysis
+            if 'scene_analysis' in analysis_data:
+                scene = analysis_data['scene_analysis']
+                
+                # Enhanced Pacing Analysis
+                if 'pacing' in scene and 'error' not in scene['pacing']:
+                    pacing = scene['pacing']
+                    visual_pace = pacing.get('visual_pace', {})
+                    audio_pace = pacing.get('audio_pace', {})
+                    
+                    # More specific pacing observations
+                    if visual_pace.get('variance', 0) > 0.3:
+                        commentary_parts.append("The dynamic visual rhythm creates a sense of urgency and unpredictability, keeping the audience engaged")
+                    elif visual_pace.get('variance', 0) > 0.2:
+                        commentary_parts.append("The varying pace of visual changes creates a natural ebb and flow that mirrors the scene's emotional journey")
+                    elif visual_pace.get('average', 0) > 0.8:
+                        commentary_parts.append("The rapid-fire visual changes create a sense of controlled chaos, driving the scene forward with relentless energy")
+                    elif visual_pace.get('average', 0) > 0.7:
+                        commentary_parts.append("The quick pacing maintains a sense of momentum while allowing key moments to resonate")
+                    else:
+                        commentary_parts.append("The deliberate pacing gives each moment room to breathe, creating space for emotional resonance")
+                
+                # Enhanced Emotional Tone Analysis
+                if 'emotional_tone' in scene and 'error' not in scene['emotional_tone']:
+                    tone = scene['emotional_tone']
+                    if 'lighting_mood' in tone:
+                        mood = tone['lighting_mood']
+                        if mood.get('contrast_level', 0) > 0.7:
+                            commentary_parts.append("The extreme contrast in lighting creates a visual metaphor for the scene's emotional extremes")
+                        elif mood.get('contrast_level', 0) > 0.5:
+                            commentary_parts.append("The interplay of light and shadow creates a rich emotional texture that underscores the scene's complexity")
+                
+                # Enhanced Key Moments Analysis
+                if 'key_moments' in scene:
+                    moments = scene['key_moments']
+                    if isinstance(moments, list):
+                        if len(moments) > 3:
+                            commentary_parts.append("The scene builds through a series of carefully orchestrated moments, each contributing to a larger emotional arc")
+                        elif len(moments) > 1:
+                            commentary_parts.append("The scene's key moments create a narrative rhythm that guides the audience through its emotional journey")
             
-            # Add a scene-specific conclusion
-            if 'speech_analysis' in insights and 'speech_segments' in insights['speech_analysis']:
-                segments = insights['speech_analysis']['speech_segments'].split('\n')
-                segment_count = len([s for s in segments if 'segment_' in s])
-                if segment_count > 5:
-                    conclusion = "The scene's rich dialogue and visual storytelling work in harmony to reveal the characters' complex relationships and motivations"
-                else:
-                    conclusion = "The scene's visual and audio elements combine to create a powerful emotional experience that speaks to the characters' inner lives"
+            # Combine into final commentary
+            if commentary_parts:
+                # Select a more varied concluding observation
+                if len(commentary_parts) > 1:
+                    conclusions = [
+                        "These carefully crafted visual elements work in harmony to create a rich cinematic experience",
+                        "The scene's technical choices serve its emotional core, creating a powerful viewing experience",
+                        "These cinematic techniques combine to tell a story that transcends the visual medium",
+                        "The scene's visual language speaks volumes about its underlying themes and emotions"
+                    ]
+                    conclusion = np.random.choice(conclusions)
+                    commentary_parts.append(conclusion)
+                commentary = ". ".join(commentary_parts) + "."
             else:
-                conclusion = f"The {overall_tone} direction effectively combines these elements to create a compelling and meaningful sequence"
+                # More varied fallback commentary
+                fallbacks = [
+                    "The scene demonstrates a masterful use of visual storytelling techniques",
+                    "The cinematography creates a rich visual tapestry that enhances the narrative",
+                    "The scene's visual elements work together to create a compelling cinematic experience"
+                ]
+                commentary = np.random.choice(fallbacks)
             
-            commentary_parts.append(conclusion)
-            return ". ".join(commentary_parts) + "."
-        else:
-            # Fallback with base knowledge concepts
-            concepts = self.base_knowledge.get_related_concepts('visual_elements') + self.base_knowledge.get_related_concepts('audio_elements')
-            return f"The scene demonstrates a thoughtful balance of {', '.join(concepts[:3])}, creating a cohesive viewing experience."
+            return commentary
+            
+        except Exception as e:
+            print(f"Error generating commentary: {str(e)}")
+            return "The scene demonstrates effective use of cinematic techniques to create a compelling viewing experience."
 
     def _interpret_color_meaning(self, colors: List[str]) -> str:
         """Interpret the meaning of color choices based on film theory."""
